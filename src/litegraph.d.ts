@@ -162,7 +162,7 @@ export type LiteGraphCanvasEvent = CustomEvent<{
     linkReleaseContext?: LinkReleaseContext;
 }>;
 
-export const LiteGraph: {
+export interface LiteGraph {
     DEFAULT_GROUP_FONT_SIZE: any;
     overlapBounding(visible_area: any, _bounding: any): unknown;
     release_link_on_empty_shows_menu: boolean;
@@ -351,7 +351,9 @@ export const LiteGraph: {
     ContextMenu: typeof ContextMenu;
     extendClass<A, B>(target: A, origin: B): A & B;
     getParameterNames(func: string): string[];
-};
+}
+
+export const LiteGraph: LiteGraph;
 
 export type serializedLGraph<
     TNode = ReturnType<LGraphNode["serialize"]>,
