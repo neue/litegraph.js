@@ -61,7 +61,7 @@ import { drawSlot, LabelPosition } from "./draw"
 import { DragAndScale } from "./DragAndScale"
 import { LinkReleaseContextExtended, LiteGraph, clamp } from "./litegraph"
 import { stringOrEmpty, stringOrNull } from "./strings"
-import { alignNodes, distributeNodes, getBoundaryNodes } from "./utils/arrange"
+import { alignItems, alignNodes, distributeItems, distributeNodes, getBoundaryNodes } from "./utils/arrange"
 import { Reroute, type RerouteId } from "./Reroute"
 import { getAllNestedItems, findFirstNode } from "./utils/collections"
 import { CanvasPointer } from "./CanvasPointer"
@@ -681,6 +681,23 @@ export class LGraphCanvas {
   ): void {
     alignNodes(Object.values(nodes), direction, align_to)
     LGraphCanvas.active_canvas.setDirty(true, true)
+  }
+
+  /**
+   * Aligns all selected items along the edge specified by {@link direction}.
+   * @param direction Direction to align items along
+   * @param alignTo If set, selected items will be aligned to this item's edge.  If nullish, they align to the furthest item.
+   */
+  alignSelected(direction: Direction, alignTo?: Positionable) {
+    alignItems(this.selectedItems, direction, alignTo)
+  }
+
+  /**
+   * Distributes all selected items evenly along a horizontal or vertical plane.
+   * @param vertically If true, distributes along the horizontal plane.  Otherwise, the vertical plane.
+   */
+  distributeSelected(vertically?: boolean) {
+    distributeItems(this.selectedItems, vertically)
   }
 
   static onNodeAlign(
