@@ -24,7 +24,6 @@ export interface ISerialisedNode {
     boxcolor?: string
     color?: string
     bgcolor?: string
-    showAdvanced?: boolean
     widgets_values?: TWidgetValue[]
 }
 

@@ -88,6 +88,7 @@ export interface INodeFlags {
     allow_interaction?: boolean
     pinned?: boolean
     collapsed?: boolean
+    showAdvanced?: boolean
 }
 
 export interface INodeInputSlot extends INodeSlot {

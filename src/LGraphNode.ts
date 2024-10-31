@@ -180,7 +180,6 @@ export class LGraphNode {
     has_errors?: boolean
     removable?: boolean
     block_delete?: boolean
-    showAdvanced?: boolean
 
     _pos: Point
     public get pos() {
@@ -409,8 +408,7 @@ export class LGraphNode {
             size: this.size,
             flags: LiteGraph.cloneObject(this.flags),
             order: this.order,
-            mode: this.mode,
-            showAdvanced: this.showAdvanced
+            mode: this.mode
         }
 
         //special case for when there were errors
@@ -1267,7 +1265,7 @@ export class LGraphNode {
         if (this.widgets?.length) {
             for (let i = 0, l = this.widgets.length; i < l; ++i) {
                 const widget = this.widgets[i]
-                if (widget.hidden || (widget.advanced && !this.showAdvanced)) continue;
+                if (widget.hidden || (widget.advanced && !this.flags.showAdvanced)) continue;
 
                 widgets_height += widget.computeSize
                     ? widget.computeSize(size[0])[1] + 4
@@ -2306,7 +2304,7 @@ export class LGraphNode {
     toggleAdvanced() {
         if (!this.widgets?.some(w => w.advanced)) return
         this.graph._version++
-        this.showAdvanced = !this.showAdvanced
+        this.flags.showAdvanced = !this.flags.showAdvanced
         const prefSize = this.computeSize()
         if (this.size[0] < prefSize[0] || this.size[1] < prefSize[1]) {
             this.setSize([Math.max(this.size[0], prefSize[0]), Math.max(this.size[1], prefSize[1])])

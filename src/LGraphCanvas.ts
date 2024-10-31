@@ -1010,20 +1010,17 @@ export class LGraphCanvas {
         node.graph.afterChange( /*?*/)
     }
     static onMenuToggleAdvanced(value: IContextMenuValue, options: IContextMenuOptions, e: MouseEvent, menu: ContextMenu, node: LGraphNode): void {
-        node.graph.beforeChange( /*?*/)
-        const fApplyMultiNode = function (node: LGraphNode) {
-            node.toggleAdvanced()
-        }
+        node.graph.beforeChange()
 
-        const graphcanvas = LGraphCanvas.active_canvas
-        if (!graphcanvas.selected_nodes || Object.keys(graphcanvas.selected_nodes).length <= 1) {
-            fApplyMultiNode(node)
+        const canvas = LGraphCanvas.active_canvas
+        if (!canvas.selected_nodes || Object.keys(canvas.selected_nodes).length <= 1) {
+            node.toggleAdvanced()
         } else {
-            for (const i in graphcanvas.selected_nodes) {
-                fApplyMultiNode(graphcanvas.selected_nodes[i])
+            for (const i in canvas.selected_nodes) {
+                canvas.selected_nodes[i].toggleAdvanced()
             }
         }
-        node.graph.afterChange( /*?*/)
+        node.graph.afterChange()
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     static onMenuNodePin(value: IContextMenuValue, options: IContextMenuOptions, e: MouseEvent, menu: ContextMenu, node: LGraphNode): void {
@@ -1639,7 +1636,7 @@ export class LGraphCanvas {
         const y = graphPos[1] - node.pos[1]
 
         for (const widget of node.widgets) {
-            if(widget.hidden || (widget.advanced && !node.showAdvanced)) continue;
+            if(widget.hidden || (widget.advanced && !node.flags.showAdvanced)) continue;
 
             let widgetWidth, widgetHeight
             if (widget.computeSize) {
@@ -5436,7 +5433,7 @@ export class LGraphCanvas {
 
         for (let i = 0; i < widgets.length; ++i) {
             const w = widgets[i]
-            if(w.hidden || (w.advanced && !node.showAdvanced)) continue;
+            if(w.hidden || (w.advanced && !node.flags.showAdvanced)) continue;
             const y = w.y || posY
 
             if (w === this.link_over_widget) {
@@ -5690,7 +5687,7 @@ export class LGraphCanvas {
         let values_list
         for (let i = 0; i < node.widgets.length; ++i) {
             const w = node.widgets[i]
-            if (!w || w.disabled || w.hidden || (w.advanced && !node.showAdvanced))
+            if (!w || w.disabled || w.hidden || (w.advanced && !node.flags.showAdvanced))
                 continue
             const widget_height = w.computeSize ? w.computeSize(width)[1] : LiteGraph.NODE_WIDGET_HEIGHT
             const widget_width = w.width || width
@@ -7634,7 +7631,7 @@ export class LGraphCanvas {
             }
             if (node.widgets?.some(w => w.advanced)) {
                 options.push({
-                    content: node.showAdvanced ? "Hide Advanced" : "Show Advanced",
+                    content: node.flags.showAdvanced ? "Hide Advanced" : "Show Advanced",
                     callback: LGraphCanvas.onMenuToggleAdvanced
                 })
             }
