@@ -1620,17 +1620,15 @@ export class LGraphCanvas {
     }
 
     /**
-     * Used to attach the canvas in a popup
+     * Gets {@link window} from the context of the {@link canvas} element.
      *
-     * @return {window} returns the window where the canvas is attached (the DOM root node)
+     * @return The {@link Window} that the {@link canvas} element is attached to.
+     * Falls back to `window` from the current context if nullish.
      */
     getCanvasWindow(): Window {
-        if (!this.canvas) return window
-
-        const doc = this.canvas.ownerDocument
-        // @ts-expect-error Check if required
-        return doc.defaultView || doc.parentWindow
+        return this.canvas?.ownerDocument.defaultView ?? window
     }
+
     /**
      * starts rendering the content of the canvas when needed
      *
