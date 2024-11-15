@@ -1503,11 +1503,11 @@ export class LGraphCanvas {
         this._mouseup_callback = this.processMouseUp.bind(this)
         this._mouseout_callback = this.processMouseOut.bind(this)
 
-        LiteGraph.pointerListenerAdd(canvas, "down", this._mousedown_callback, true) //down do not need to store the binded
+        canvas.addEventListener("pointerdown", this._mousedown_callback, true)
         canvas.addEventListener("mousewheel", this._mousewheel_callback, false)
 
-        LiteGraph.pointerListenerAdd(canvas, "up", this._mouseup_callback, true) // CHECK: ??? binded or not
-        LiteGraph.pointerListenerAdd(canvas, "move", this._mousemove_callback)
+        canvas.addEventListener("pointerup", this._mouseup_callback, true)
+        canvas.addEventListener("pointermove", this._mousemove_callback)
         canvas.addEventListener("pointerout", this._mouseout_callback)
 
         canvas.addEventListener("contextmenu", this._doNothing)
@@ -1547,9 +1547,9 @@ export class LGraphCanvas {
         const document = ref_window.document
 
         this.canvas.removeEventListener("pointerout", this._mouseout_callback)
-        LiteGraph.pointerListenerRemove(this.canvas, "move", this._mousemove_callback)
-        LiteGraph.pointerListenerRemove(this.canvas, "up", this._mouseup_callback)
-        LiteGraph.pointerListenerRemove(this.canvas, "down", this._mousedown_callback)
+        this.canvas.removeEventListener("pointermove", this._mousemove_callback)
+        this.canvas.removeEventListener("pointerup", this._mouseup_callback)
+        this.canvas.removeEventListener("pointerdown", this._mousedown_callback)
         this.canvas.removeEventListener(
             "mousewheel",
             this._mousewheel_callback
@@ -1760,10 +1760,10 @@ export class LGraphCanvas {
 
         //move mouse move event to the window in case it drags outside of the canvas
         if (!this.options.skip_events) {
-            LiteGraph.pointerListenerRemove(this.canvas, "move", this._mousemove_callback)
+            this.canvas.removeEventListener("pointermove", this._mousemove_callback)
             //catch for the entire window
-            LiteGraph.pointerListenerAdd(ref_window.document, "move", this._mousemove_callback, true)
-            LiteGraph.pointerListenerAdd(ref_window.document, "up", this._mouseup_callback, true)
+            ref_window.document.addEventListener("pointermove", this._mousemove_callback, true)
+            ref_window.document.addEventListener("pointerup", this._mouseup_callback, true)
         }
 
         if (!is_inside) return
@@ -2531,9 +2531,9 @@ export class LGraphCanvas {
 
         //restore the mousemove event back to the canvas
         if (!this.options.skip_events) {
-            LiteGraph.pointerListenerRemove(document, "move", this._mousemove_callback, true)
-            LiteGraph.pointerListenerAdd(this.canvas, "move", this._mousemove_callback, true)
-            LiteGraph.pointerListenerRemove(document, "up", this._mouseup_callback, true)
+            document.removeEventListener("pointermove", this._mousemove_callback, true)
+            this.canvas.addEventListener("pointermove", this._mousemove_callback, true)
+            document.removeEventListener("pointerup", this._mouseup_callback, true)
         }
 
         this.adjustMouseEvent(e)
@@ -5922,7 +5922,7 @@ export class LGraphCanvas {
             switch (w.type) {
                 case "button": {
                     // FIXME: This one-function-to-rule-them-all pattern is nuts.  Split events into manageable chunks.
-                    if (event.type === LiteGraph.pointerevents_method + "down") {
+                    if (event.type === "pointerdown") {
                         if (w.callback) {
                             setTimeout(function () {
                                 w.callback(w, that, node, pos, event)
@@ -5952,7 +5952,7 @@ export class LGraphCanvas {
                         ? false
                         : true
                     // TODO: Type checks on widget values
-                    if (allow_scroll && event.type == LiteGraph.pointerevents_method + "move" && w.type == "number") {
+                    if (allow_scroll && event.type == "pointermove" && w.type == "number") {
                         if (event.deltaX)
                             w.value += event.deltaX * 0.1 * (w.options.step || 1)
                         if (w.options.min != null && w.value < w.options.min) {
@@ -5961,7 +5961,7 @@ export class LGraphCanvas {
                         if (w.options.max != null && w.value > w.options.max) {
                             w.value = w.options.max
                         }
-                    } else if (event.type == LiteGraph.pointerevents_method + "down") {
+                    } else if (event.type == "pointerdown") {
                         values = w.options.values
                         if (typeof values === "function") {
                             // @ts-expect-error
@@ -6014,7 +6014,7 @@ export class LGraphCanvas {
                             }
                         }
                     } //end mousedown
-                    else if (event.type == LiteGraph.pointerevents_method + "up" && w.type == "number") {
+                    else if (event.type == "pointerup" && w.type == "number") {
                         delta = x < 40 ? -1 : x > widget_width - 40 ? 1 : 0
                         if (event.click_time < 200 && delta == 0) {
                             this.prompt("Value", w.value, function (v) {
@@ -6042,7 +6042,7 @@ export class LGraphCanvas {
                     break
                 }
                 case "toggle":
-                    if (event.type == LiteGraph.pointerevents_method + "down") {
+                    if (event.type == "pointerdown") {
                         w.value = !w.value
                         setTimeout(function () {
                             inner_value_change(w, w.value)
@@ -6051,7 +6051,7 @@ export class LGraphCanvas {
                     break
                 case "string":
                 case "text":
-                    if (event.type == LiteGraph.pointerevents_method + "down") {
+                    if (event.type == "pointerdown") {
                         this.prompt("Value", w.value, function (v: any) {
                             inner_value_change(this, v)
                         }.bind(w),
@@ -6492,14 +6492,14 @@ export class LGraphCanvas {
 
         let dialogCloseTimer = null
         let prevent_timeout = 0
-        LiteGraph.pointerListenerAdd(dialog, "leave", function () {
+        dialog.addEventListener("pointerleave", function () {
             if (prevent_timeout)
                 return
             if (LiteGraph.dialog_close_on_mouse_leave)
                 if (!dialog.is_modified && LiteGraph.dialog_close_on_mouse_leave)
                     dialogCloseTimer = setTimeout(dialog.close, LiteGraph.dialog_close_on_mouse_leave_delay) //dialog.close();
         })
-        LiteGraph.pointerListenerAdd(dialog, "enter", function () {
+        dialog.addEventListener("pointerenter", function () {
             if (LiteGraph.dialog_close_on_mouse_leave && dialogCloseTimer)
                 clearTimeout(dialogCloseTimer)
         })
@@ -6652,13 +6652,13 @@ export class LGraphCanvas {
             // FIXME: Remove "any" kludge
             let prevent_timeout: any = false
             let timeout_close = null
-            LiteGraph.pointerListenerAdd(dialog, "enter", function () {
+            dialog.addEventListener("pointerenter", function () {
                 if (timeout_close) {
                     clearTimeout(timeout_close)
                     timeout_close = null
                 }
             })
-            LiteGraph.pointerListenerAdd(dialog, "leave", function () {
+            dialog.addEventListener("pointerleave", function () {
                 if (prevent_timeout)
                     return
                 timeout_close = setTimeout(function () {

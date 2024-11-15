@@ -157,7 +157,8 @@ export class LiteGraphGlobal {
 
     release_link_on_empty_shows_menu = false //[true!] dragging a link to empty space will open a menu, add from list, search or defaults
 
-    pointerevents_method = "pointer" // "mouse"|"pointer" use mouse for retrocompatibility issues? (none found @ now)
+    /** @deprecated Legacy extension support only */
+    pointerevents_method = "pointer" as const
 
     // TODO implement pointercancel, gotpointercapture, lostpointercapture, (pointerover, pointerout if necessary)
     ctrl_shift_v_paste_connect_unselected_outputs = true //[true!] allows ctrl + shift + v to paste nodes with the outputs of the unselected nodes connected with the inputs of the newly pasted nodes
@@ -704,95 +705,16 @@ export class LiteGraphGlobal {
             .filter(Boolean) // split & filter [""]
     }
 
-    /* helper for interaction: pointer, touch, mouse Listeners
-    used by LGraphCanvas DragAndScale ContextMenu*/
+    /** @deprecated Use {@link Element.addEventListener} */
     pointerListenerAdd(oDOM: Node, sEvIn: string, fCall: (e: Event) => boolean | void, capture = false): void {
         if (!oDOM || !oDOM.addEventListener || !sEvIn || typeof fCall !== "function") return
-
-        let sMethod = this.pointerevents_method
-        let sEvent = sEvIn
-
-        // UNDER CONSTRUCTION
-        // convert pointerevents to touch event when not available
-        if (sMethod == "pointer" && !window.PointerEvent) {
-            console.warn("sMethod=='pointer' && !window.PointerEvent")
-            console.log("Converting pointer[" + sEvent + "] : down move up cancel enter TO touchstart touchmove touchend, etc ..")
-            switch (sEvent) {
-                case "down": {
-                    sMethod = "touch"
-                    sEvent = "start"
-                    break
-                }
-                case "move": {
-                    sMethod = "touch"
-                    //sEvent = "move";
-                    break
-                }
-                case "up": {
-                    sMethod = "touch"
-                    sEvent = "end"
-                    break
-                }
-                case "cancel": {
-                    sMethod = "touch"
-                    //sEvent = "cancel";
-                    break
-                }
-                case "enter": {
-                    console.log("debug: Should I send a move event?") // ???
-                    break
-                }
-                // case "over": case "out": not used at now
-                default: {
-                    console.warn("PointerEvent not available in this browser ? The event " + sEvent + " would not be called")
-                }
-            }
-        }
-
-        switch (sEvent) {
-            // @ts-expect-error
-            //both pointer and move events
-            case "down": case "up": case "move": case "over": case "out": case "enter":
-                {
-                    oDOM.addEventListener(sMethod + sEvent, fCall, capture)
-                }
-            // @ts-expect-error
-            // only pointerevents
-            case "leave": case "cancel": case "gotpointercapture": case "lostpointercapture":
-                {
-                    if (sMethod != "mouse") {
-                        return oDOM.addEventListener(sMethod + sEvent, fCall, capture)
-                    }
-                }
-            // not "pointer" || "mouse"
-            default:
-                return oDOM.addEventListener(sEvent, fCall, capture)
-        }
+        oDOM.addEventListener(`pointer${sEvIn}`, fCall, capture)
     }
+
+    /** @deprecated Use {@link Element.removeEventListener} */
     pointerListenerRemove(oDOM: Node, sEvent: string, fCall: (e: Event) => boolean | void, capture = false): void {
         if (!oDOM || !oDOM.removeEventListener || !sEvent || typeof fCall !== "function") return
-
-        switch (sEvent) {
-            // @ts-expect-error
-            //both pointer and move events
-            case "down": case "up": case "move": case "over": case "out": case "enter":
-                {
-                    if (this.pointerevents_method == "pointer" || this.pointerevents_method == "mouse") {
-                        oDOM.removeEventListener(this.pointerevents_method + sEvent, fCall, capture)
-                    }
-                }
-            // @ts-expect-error
-            // only pointerevents
-            case "leave": case "cancel": case "gotpointercapture": case "lostpointercapture":
-                {
-                    if (this.pointerevents_method == "pointer") {
-                        return oDOM.removeEventListener(this.pointerevents_method + sEvent, fCall, capture)
-                    }
-                }
-            // not "pointer" || "mouse"
-            default:
-                return oDOM.removeEventListener(sEvent, fCall, capture)
-        }
+        oDOM.removeEventListener(`pointer${sEvent}`, fCall, capture)
     }
 
     getTime: () => number
