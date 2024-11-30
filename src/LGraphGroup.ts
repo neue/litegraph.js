@@ -18,7 +18,6 @@ import {
   snapPoint,
 } from "./measure"
 import { LGraphNode } from "./LGraphNode"
-import { RenderShape, TitleMode } from "./types/globalEnums"
 
 export interface IGraphGroupFlags extends Record<string, unknown> {
   pinned?: true
