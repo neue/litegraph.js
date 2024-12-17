@@ -13,6 +13,8 @@ interface IBoundaryItems {
  * @param nodes The nodes to check the edges of
  * @returns An object listing the furthest node (edge) in all four directions.
  * `null` if no nodes were supplied or the first node was falsy.
+ * @deprecated Uses {@link LGraphNode.pos} and {@link LGraphNode.size}, rather than
+ * {@link LGraphNode.boundingRect}, to determine the boundary.  This may be inaccurate.
  */
 export function getBoundaryNodes(nodes: LGraphNode[]): IBoundaryNodes | null {
   const valid = nodes?.find(x => x)
@@ -146,6 +148,8 @@ export function distributeItems(items: Iterable<Positionable>, horizontal?: bool
  * @param nodes The nodes to align
  * @param direction The edge to align nodes on
  * @param align_to The node to align all other nodes to.  If undefined, the farthest node will be used.
+ * @deprecated Uses {@link LGraphNode.pos} and {@link LGraphNode.size}, rather than
+ * {@link LGraphNode.boundingRect}, to determine edges.  This may be inaccurate.
  */
 export function alignNodes(
   nodes: LGraphNode[],
@@ -178,6 +182,12 @@ export function alignNodes(
   }
 }
 
+/**
+ * Aligns all items along an edge.
+ * @param items The items to align
+ * @param direction The edge to align items on
+ * @param alignTo The node to align all other items to.  If undefined, the farthest item will be used.
+ */
 export function alignItems(items: Iterable<Positionable>, direction: Direction, alignTo?: Positionable): void {
   if (!items) return
 
