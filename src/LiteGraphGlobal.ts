@@ -257,6 +257,9 @@ export class LiteGraphGlobal {
   /** If `true`, the old "eye-melting-red" error indicator will be used for nodes */
   use_legacy_node_error_indicator = false
 
+  /** Disable the scaling of combo box menus */
+  combo_widget_scaling = true
+
   // TODO: Remove legacy accessors
   LGraph = LGraph
   LLink = LLink

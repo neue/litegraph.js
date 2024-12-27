@@ -2659,7 +2659,7 @@ export class LGraphCanvas {
         }
         const text_values = values != values_list ? Object.values(values) : values
         new LiteGraph.ContextMenu(text_values, {
-          scale: Math.max(1, this.ds.scale),
+          scale: LiteGraph.combo_widget_scaling ? Math.max(1, this.ds.scale) : undefined,
           event: e,
           className: "dark",
           callback: (value: string) => {
