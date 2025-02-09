@@ -93,7 +93,7 @@ export interface IMultilineStringWidget<TElement extends HTMLElement = HTMLTextA
 export interface ICustomWidget<TElement extends HTMLElement = HTMLElement> extends
   IBaseWidget<TElement> {
 
-  type?: string
+  type?: "custom"
   value: string | object
 
   element?: TElement

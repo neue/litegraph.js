@@ -1637,6 +1637,7 @@ export class LGraphNode implements Positionable, IPinnable {
     }
 
     const w: IWidget = {
+      // @ts-expect-error
       type: type.toLowerCase(),
       name: name,
       value: value,
