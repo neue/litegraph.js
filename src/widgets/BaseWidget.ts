@@ -1,21 +1,10 @@
 import type { CanvasPointer, LGraphCanvas, LGraphNode, Size } from "@/litegraph"
 import type { CanvasMouseEvent, CanvasPointerEvent } from "@/types/events"
-import type { IBaseWidget, ICustomWidget, IWidget, IWidgetOptions, TWidgetType, TWidgetValue } from "@/types/widgets"
+import type { IBaseWidget, IWidget, IWidgetOptions, TWidgetType, TWidgetValue } from "@/types/widgets"
 import { Point } from "@/interfaces"
 import { LiteGraph } from "@/litegraph"
-import { toClass } from "@/utils/type"
-import { WIDGET_TYPE_MAP } from "./widgetMap"
-import { CustomWidget } from "./CustomWidget"
 
 export abstract class BaseWidget implements IBaseWidget {
-  static toClass<T extends IWidget>(plain: T): BaseWidget & T {
-    const WidgetClass = WIDGET_TYPE_MAP[plain.type ?? ""]
-    if (WidgetClass) {
-      return toClass(WidgetClass, plain) as BaseWidget & T
-    }
-    return new CustomWidget(plain as ICustomWidget) as BaseWidget & T
-  }
-
   linkedWidgets?: IWidget[]
   options: IWidgetOptions<unknown>
   marker?: number

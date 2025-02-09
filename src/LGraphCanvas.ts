@@ -66,7 +66,7 @@ import { Reroute, type RerouteId } from "./Reroute"
 import { getAllNestedItems, findFirstNode } from "./utils/collections"
 import { CanvasPointer } from "./CanvasPointer"
 import { type ConnectionColorContext } from "./NodeSlot"
-import { BaseWidget } from "./widgets/BaseWidget"
+import { toWidgetClass } from "./widgets/widgetMap"
 
 interface IShowSearchOptions {
   node_to?: LGraphNode
@@ -2556,7 +2556,7 @@ export class LGraphCanvas implements ConnectionColorContext {
     const x = pos[0] - node.pos[0]
     const y = pos[1] - node.pos[1]
 
-    const widgetInstance = BaseWidget.toClass(widget)
+    const widgetInstance = toWidgetClass(widget)
     pointer.onClick = () => widgetInstance.onClick({
       e,
       node,

@@ -36,7 +36,7 @@ import { isInRectangle, isInRect, snapPoint } from "./measure"
 import { LLink } from "./LLink"
 import { ConnectionColorContext, NodeInputSlot, NodeOutputSlot } from "./NodeSlot"
 import { toClass } from "./utils/type"
-import { BaseWidget } from "./widgets/BaseWidget"
+import { toWidgetClass } from "./widgets/widgetMap"
 export type NodeId = number | string
 
 export interface INodePropertyInfo {
@@ -1661,7 +1661,7 @@ export class LGraphNode implements Positionable, IPinnable {
   }
 
   addCustomWidget<T extends IWidget>(custom_widget: T): T {
-    const widget = BaseWidget.toClass(custom_widget)
+    const widget = toWidgetClass(custom_widget)
     this.widgets ||= []
     this.widgets.push(widget)
     return widget
@@ -3131,7 +3131,7 @@ export class LGraphNode implements Positionable, IPinnable {
       if (w.disabled) ctx.globalAlpha *= 0.5
       const widget_width = w.width || width
 
-      BaseWidget.toClass(w).drawWidget(ctx, { y, width: widget_width, node: this, show_text, margin })
+      toWidgetClass(w).drawWidget(ctx, { y, width: widget_width, node: this, show_text, margin })
 
       posY += (w.computeSize ? w.computeSize(widget_width)[1] : H) + 4
       ctx.globalAlpha = editorAlpha
