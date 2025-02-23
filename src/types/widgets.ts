@@ -16,6 +16,12 @@ export interface IWidgetOptions<TValue = unknown> extends Record<string, unknown
   multiline?: boolean
   // TODO: Confirm this
   property?: string
+  /**
+   * Controls whether the widget's value is included in the API workflow/prompt.
+   * - If false, the value will be excluded from the API workflow but still saved in the graph state
+   * - If true or undefined, the value will be included in both the API workflow and graph state
+   */
+  serialize?: boolean
 
   values?: TValue[]
   callback?: IWidget["callback"]
