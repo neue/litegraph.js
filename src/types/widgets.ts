@@ -1,5 +1,6 @@
 import type { CanvasPointer, LGraphCanvas, LGraphNode } from "../litegraph"
 import type { CanvasMouseEvent, CanvasPointerEvent } from "./events"
+import type { ISlotType } from "@/interfaces"
 
 import { CanvasColour, Point, Size } from "../interfaces"
 
@@ -146,6 +147,11 @@ export interface IBaseWidget<TElement extends HTMLElement = HTMLElement> {
   /** Widget type (see {@link TWidgetType}) */
   type?: TWidgetType
   value?: TWidgetValue
+  /**
+   * The slot type of the widget for widgets that can accept input connections
+   * from outputs of other nodes. The slot type must be JSON serializable.
+   */
+  slotType?: ISlotType
 
   /**
    * The computed height of the widget. Used by customized node resize logic.
