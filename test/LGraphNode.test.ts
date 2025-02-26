@@ -17,48 +17,6 @@ describe("LGraphNode", () => {
     expect(node.serialize().size).toEqual([100, 100])
   })
 
-  test("should serialize widget inputs correctly", () => {
-    const node = new LGraphNode("TestNode")
-    node.addCustomWidget({
-      type: "number",
-      name: "TestWidget",
-      value: 10,
-      options: {
-        slotType: "INT",
-      },
-    })
-
-    node.addWidget(
-      "number",
-      "TestWidget2",
-      10,
-      () => {},
-      {
-        slotType: "INT",
-      },
-    )
-
-    const serialized = node.serialize()
-    expect(serialized.inputs).toEqual([
-      {
-        name: "TestWidget",
-        type: "INT",
-        link: null,
-        widget: {
-          name: "TestWidget",
-        },
-      },
-      {
-        name: "TestWidget2",
-        type: "INT",
-        link: null,
-        widget: {
-          name: "TestWidget2",
-        },
-      },
-    ])
-  })
-
   test("should configure inputs correctly", () => {
     const node = new LGraphNode("TestNode")
     node.configure({
@@ -92,5 +50,135 @@ describe("LGraphNode", () => {
     node.configure({ id: 1 })
     expect(node.id).toEqual(1)
     expect(node.outputs.length).toEqual(1)
+  })
+
+  describe("widget inputs", () => {
+    describe("dynamically added widget", () => {
+      test("LGraphNode.addWidget", () => {
+        const node = new LGraphNode("TestNode")
+        node.addCustomWidget({
+          type: "number",
+          name: "TestWidget",
+          value: 10,
+          options: {
+            slotType: "INT",
+          },
+        })
+        expect(node.inputs.length).toEqual(1)
+        expect(node.inputs[0].name).toEqual("TestWidget")
+        expect(node.inputs[0].type).toEqual("INT")
+        expect(node.inputs[0].link).toEqual(null)
+        expect(node.inputs[0].widget?.name).toEqual("TestWidget")
+        expect(node.widgets?.length).toEqual(1)
+        expect(node.widgets?.[0]?.name).toEqual("TestWidget")
+      })
+
+      test("LGraphNode.addCustomWidget", () => {
+        const node = new LGraphNode("TestNode")
+        node.addCustomWidget({
+          type: "number",
+          name: "TestWidget",
+          value: 10,
+          options: {
+            slotType: "INT",
+          },
+        })
+
+        expect(node.inputs.length).toEqual(1)
+        expect(node.inputs[0].name).toEqual("TestWidget")
+        expect(node.inputs[0].type).toEqual("INT")
+        expect(node.inputs[0].link).toEqual(null)
+        expect(node.inputs[0].widget?.name).toEqual("TestWidget")
+        expect(node.widgets?.length).toEqual(1)
+        expect(node.widgets?.[0]?.name).toEqual("TestWidget")
+      })
+    })
+
+    describe("configure", () => {
+      test("should add widget input slot if widget is not already an input slot", () => {
+        const node = new LGraphNode("TestNode")
+        node.addCustomWidget({
+          type: "number",
+          name: "TestWidget",
+          value: 10,
+          options: {
+            slotType: "INT",
+          },
+        })
+
+        node.configure({
+          id: 0,
+          widgets_values: [10],
+        })
+
+        expect(node.inputs.length).toEqual(1)
+        expect(node.inputs[0].name).toEqual("TestWidget")
+        expect(node.inputs[0].type).toEqual("INT")
+        expect(node.inputs[0].link).toEqual(null)
+        expect(node.inputs[0].widget?.name).toEqual("TestWidget")
+      })
+
+      test("should not add widget input slot if widget is already an input slot", () => {
+        const node = new LGraphNode("TestNode")
+        node.addCustomWidget({
+          type: "number",
+          name: "TestWidget",
+          value: 10,
+          options: {
+            slotType: "INT",
+          },
+        })
+        node.configure({
+          id: 0,
+          inputs: [{ name: "TestWidget", type: "INT", link: null, widget: { name: "TestWidget" } }],
+        })
+
+        expect(node.inputs.length).toEqual(1)
+        expect(node.inputs[0].name).toEqual("TestWidget")
+        expect(node.inputs[0].type).toEqual("INT")
+        expect(node.inputs[0].link).toEqual(null)
+      })
+    })
+
+    describe("serialize", () => {
+      test("should serialize connected widget input slot", () => {
+        const node = new LGraphNode("TestNode")
+        node.addCustomWidget({
+          type: "number",
+          name: "TestWidget",
+          value: 10,
+          options: {
+            slotType: "INT",
+          },
+        })
+
+        node.inputs[0].link = 1
+
+        const serialized = node.serialize()
+        expect(serialized.inputs).toEqual([
+          {
+            name: "TestWidget",
+            type: "INT",
+            link: 1,
+            widget: { name: "TestWidget" },
+          },
+        ])
+      })
+
+      test("should not serialize disconnected widget input slot", () => {
+        const node = new LGraphNode("TestNode")
+        node.addCustomWidget({
+          type: "number",
+          name: "TestWidget",
+          value: 10,
+          options: {
+            slotType: "INT",
+          },
+        })
+
+        const serialized = node.serialize()
+        expect(serialized.inputs).toEqual([])
+      })
+    })
   })
 })

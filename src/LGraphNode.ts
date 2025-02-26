@@ -664,12 +664,26 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
       this.onOutputAdded?.(output)
     }
 
+    const widgetInputNames = new Set<string>(
+      this.inputs.filter(isWidgetInputSlot).map(input => input.widget.name),
+    )
+
     if (this.widgets) {
       for (const w of this.widgets) {
         if (!w) continue
 
-        if (w.options?.property && this.properties[w.options.property] != undefined)
+        if (w.options?.property && this.properties[w.options.property] != undefined) {
           w.value = JSON.parse(JSON.stringify(this.properties[w.options.property]))
+        }
+
+        if (!widgetInputNames.has(w.name) && w.options.slotType) {
+          this.inputs.push(new NodeInputSlot({
+            name: w.name,
+            type: w.options.slotType,
+            link: null,
+            widget: w,
+          }))
+        }
       }
 
       if (info.widgets_values) {
@@ -708,7 +722,11 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
     if (this.constructor === LGraphNode && this.last_serialization)
       return this.last_serialization
 
-    if (this.inputs) o.inputs = this.inputs.map(input => serializeSlot(input))
+    if (this.inputs) {
+      o.inputs = this.inputs
+        .filter(input => !(isWidgetInputSlot(input) && input.link == null))
+        .map(input => serializeSlot(input))
+    }
     if (this.outputs) o.outputs = this.outputs.map(output => serializeSlot(output))
 
     if (this.title && this.title != this.constructor.title) o.title = this.title
