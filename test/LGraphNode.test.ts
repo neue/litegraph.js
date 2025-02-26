@@ -157,8 +157,11 @@ describe("LGraphNode", () => {
 
         expect(node.inputs[0].widget).toBe(widget)
       })
-
-      test("should still keep widget input slot if widget is not found", () => {
+      /**
+       * This can happen when the node definition is updated. We should remove the input slot
+       * and the connection and the user should try to re-connect it to the updated widget.
+       */
+      test("should remove widget input slot if widget is not found", () => {
         const node = new LGraphNode("TestNode")
         const warnSpy = vi.spyOn(console, "warn")
         node.configure({
@@ -166,8 +169,7 @@ describe("LGraphNode", () => {
           inputs: [{ name: "TestWidget", type: "INT", link: null, widget: { name: "TestWidget" } }],
         })
 
-        expect(node.inputs.length).toEqual(1)
-        expect(node.inputs[0].widget).not.toBeDefined()
+        expect(node.inputs.length).toEqual(0)
 
         // Should be a warning console message
         expect(warnSpy).toHaveBeenCalledWith(

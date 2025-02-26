@@ -649,20 +649,23 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
       this.inputs.map(input => [input.name, input]),
     )
 
+    this.inputs = this.inputs.filter((input) => {
+      if (isWidgetInputSlot(input)) {
+        input.widget = widgetByName.get(input.name)
+        if (!input.widget) {
+          console.warn(`Widget with name "${input.name}" not found for input slot`)
+          return false
+        }
+      }
+      return true
+    })
+
     for (const [i, input] of this.inputs.entries()) {
       const link = this.graph && input.link != null
         ? this.graph._links.get(input.link)
         : null
       this.onConnectionsChange?.(NodeSlotType.INPUT, i, true, link, input)
       this.onInputAdded?.(input)
-
-      if (isWidgetInputSlot(input)) {
-        input.widget = widgetByName.get(input.name)
-        if (!input.widget) {
-          console.warn(`Widget with name "${input.name}" not found for input slot`)
-          delete input.widget
-        }
-      }
     }
 
     this.outputs ??= []
