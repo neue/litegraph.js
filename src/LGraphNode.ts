@@ -663,11 +663,9 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
       }
       this.onOutputAdded?.(output)
     }
-
-    const widgetInputNames = new Set<string>(
-      this.inputs.filter(isWidgetInputSlot).map(input => input.widget.name),
+    const inputByName = new Map<string, INodeInputSlot>(
+      this.inputs.map(input => [input.name, input]),
     )
-
     if (this.widgets) {
       for (const w of this.widgets) {
         if (!w) continue
@@ -675,14 +673,19 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
         if (w.options?.property && this.properties[w.options.property] != undefined) {
           w.value = JSON.parse(JSON.stringify(this.properties[w.options.property]))
         }
-
-        if (!widgetInputNames.has(w.name) && w.options.slotType) {
-          this.inputs.push(new NodeInputSlot({
-            name: w.name,
-            type: w.options.slotType,
-            link: null,
-            widget: w,
-          }))
+        // Populate widget input slot of hydrated widget instance.
+        if (w.options.slotType) {
+          const input = inputByName.get(w.name)
+          if (!input) {
+            this.inputs.push(new NodeInputSlot({
+              name: w.name,
+              type: w.options.slotType,
+              link: null,
+              widget: w,
+            }))
+          } else {
+            input.widget = w
+          }
         }
       }
 

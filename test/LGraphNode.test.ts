@@ -138,6 +138,25 @@ describe("LGraphNode", () => {
         expect(node.inputs[0].type).toEqual("INT")
         expect(node.inputs[0].link).toEqual(null)
       })
+
+      test("should hydrate InputSlot.widget", () => {
+        const node = new LGraphNode("TestNode")
+        const widget = node.addCustomWidget({
+          type: "number",
+          name: "TestWidget",
+          value: 10,
+          options: {
+            slotType: "INT",
+          },
+        })
+
+        node.configure({
+          id: 0,
+          inputs: [{ name: "TestWidget", type: "INT", link: null, widget: { name: "TestWidget" } }],
+        })
+
+        expect(node.inputs[0].widget).toBe(widget)
+      })
     })
 
     describe("serialize", () => {
