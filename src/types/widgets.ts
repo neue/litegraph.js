@@ -21,6 +21,13 @@ export interface IWidgetOptions<TValue = unknown> extends Record<string, unknown
 
   values?: TValue[]
   callback?: IWidget["callback"]
+
+  /**
+   * The slot type of the widget for widgets that can accept input connections
+   * from outputs of other nodes. The value correspond to the slot type must be
+   * JSON serializable.
+   */
+  slotType?: ISlotType
 }
 
 export interface IWidgetSliderOptions extends IWidgetOptions<number> {
@@ -147,12 +154,6 @@ export interface IBaseWidget<TElement extends HTMLElement = HTMLElement> {
   /** Widget type (see {@link TWidgetType}) */
   type?: TWidgetType
   value?: TWidgetValue
-  /**
-   * The slot type of the widget for widgets that can accept input connections
-   * from outputs of other nodes. The slot type must be JSON serializable.
-   */
-  slotType?: ISlotType
-
   /**
    * The computed height of the widget. Used by customized node resize logic.
    * See scripts/domWidget.ts for more details.

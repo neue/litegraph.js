@@ -23,9 +23,20 @@ describe("LGraphNode", () => {
       type: "number",
       name: "TestWidget",
       value: 10,
-      options: {},
-      slotType: "INT",
+      options: {
+        slotType: "INT",
+      },
     })
+
+    node.addWidget(
+      "number",
+      "TestWidget2",
+      10,
+      () => {},
+      {
+        slotType: "INT",
+      },
+    )
 
     const serialized = node.serialize()
     expect(serialized.inputs).toEqual([
@@ -35,6 +46,14 @@ describe("LGraphNode", () => {
         link: null,
         widget: {
           name: "TestWidget",
+        },
+      },
+      {
+        name: "TestWidget2",
+        type: "INT",
+        link: null,
+        widget: {
+          name: "TestWidget2",
         },
       },
     ])
