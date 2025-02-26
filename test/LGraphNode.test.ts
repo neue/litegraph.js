@@ -1,4 +1,4 @@
-import { describe, expect } from "vitest"
+import { describe, expect, vi } from "vitest"
 
 import { LGraphNode } from "@/litegraph"
 import { NodeInputSlot, NodeOutputSlot } from "@/NodeSlot"
@@ -156,6 +156,24 @@ describe("LGraphNode", () => {
         })
 
         expect(node.inputs[0].widget).toBe(widget)
+      })
+
+      test("should still keep widget input slot if widget is not found", () => {
+        const node = new LGraphNode("TestNode")
+        const warnSpy = vi.spyOn(console, "warn")
+        node.configure({
+          id: 0,
+          inputs: [{ name: "TestWidget", type: "INT", link: null, widget: { name: "TestWidget" } }],
+        })
+
+        expect(node.inputs.length).toEqual(1)
+        expect(node.inputs[0].widget).not.toBeDefined()
+
+        // Should be a warning console message
+        expect(warnSpy).toHaveBeenCalledWith(
+          "Widget with name \"TestWidget\" not found for input slot",
+        )
+        warnSpy.mockRestore()
       })
     })
 

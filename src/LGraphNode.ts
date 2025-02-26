@@ -641,12 +641,28 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
 
     this.inputs ??= []
     this.inputs = this.inputs.map(input => toClass(NodeInputSlot, input))
+
+    const widgetByName = new Map<string, IWidget>(
+      this.widgets?.map(w => [w.name, w]) ?? [],
+    )
+    const inputByName = new Map<string, INodeInputSlot>(
+      this.inputs.map(input => [input.name, input]),
+    )
+
     for (const [i, input] of this.inputs.entries()) {
       const link = this.graph && input.link != null
         ? this.graph._links.get(input.link)
         : null
       this.onConnectionsChange?.(NodeSlotType.INPUT, i, true, link, input)
       this.onInputAdded?.(input)
+
+      if (isWidgetInputSlot(input)) {
+        input.widget = widgetByName.get(input.name)
+        if (!input.widget) {
+          console.warn(`Widget with name "${input.name}" not found for input slot`)
+          delete input.widget
+        }
+      }
     }
 
     this.outputs ??= []
@@ -663,9 +679,6 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
       }
       this.onOutputAdded?.(output)
     }
-    const inputByName = new Map<string, INodeInputSlot>(
-      this.inputs.map(input => [input.name, input]),
-    )
     if (this.widgets) {
       for (const w of this.widgets) {
         if (!w) continue
@@ -673,19 +686,13 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
         if (w.options?.property && this.properties[w.options.property] != undefined) {
           w.value = JSON.parse(JSON.stringify(this.properties[w.options.property]))
         }
-        // Populate widget input slot of hydrated widget instance.
-        if (w.options.slotType) {
-          const input = inputByName.get(w.name)
-          if (!input) {
-            this.inputs.push(new NodeInputSlot({
-              name: w.name,
-              type: w.options.slotType,
-              link: null,
-              widget: w,
-            }))
-          } else {
-            input.widget = w
-          }
+        if (w.options.slotType && !inputByName.has(w.name)) {
+          this.inputs.push(new NodeInputSlot({
+            name: w.name,
+            type: w.options.slotType,
+            link: null,
+            widget: w,
+          }))
         }
       }
 
