@@ -1732,6 +1732,10 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
     const WidgetClass = WIDGET_TYPE_MAP[custom_widget.type]
     const widget = WidgetClass ? new WidgetClass(custom_widget) as IWidget : custom_widget
     this.widgets.push(widget)
+
+    if (widget.slotType && widget.name) {
+      this.addInput(widget.name, widget.slotType, { widget })
+    }
     return widget as T
   }
 

@@ -17,6 +17,29 @@ describe("LGraphNode", () => {
     expect(node.serialize().size).toEqual([100, 100])
   })
 
+  test("should serialize widget inputs correctly", () => {
+    const node = new LGraphNode("TestNode")
+    node.addCustomWidget({
+      type: "number",
+      name: "TestWidget",
+      value: 10,
+      options: {},
+      slotType: "INT",
+    })
+
+    const serialized = node.serialize()
+    expect(serialized.inputs).toEqual([
+      {
+        name: "TestWidget",
+        type: "INT",
+        link: null,
+        widget: {
+          name: "TestWidget",
+        },
+      },
+    ])
+  })
+
   test("should configure inputs correctly", () => {
     const node = new LGraphNode("TestNode")
     node.configure({
