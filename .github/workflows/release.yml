@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - master
+      - core/*
     paths:
       - "package.json"
 
@@ -31,10 +32,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ steps.current_version.outputs.version }}
-          draft: false
+          draft: true
           prerelease: false
           generate_release_notes: true
-          make_latest: "true"
+          make_latest: false
   publish:
     runs-on: ubuntu-latest
     if: >
