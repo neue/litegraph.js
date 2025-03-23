@@ -244,9 +244,7 @@ export class LinkConnector {
     const slot = node.outputs.at(linkSegment.origin_slot)
     if (!slot) return
 
-    const reroute = network.getReroute(linkSegment.parentId)
-    if (!reroute) return
-
+    const reroute = linkSegment.parentId ? network.reroutes.get(linkSegment.parentId) : undefined
     const renderLink = new ToInputRenderLink(network, node, slot, reroute)
     renderLink.fromDirection = LinkDirection.NONE
     this.renderLinks.push(renderLink)
