@@ -8,6 +8,7 @@ import { KnobWidget } from "./KnobWidget"
 import { NumberWidget } from "./NumberWidget"
 import { SliderWidget } from "./SliderWidget"
 import { TextWidget } from "./TextWidget"
+import { HeaderWidget } from "./HeaderWidget"
 
 type WidgetConstructor = {
   new (plain: IBaseWidget): BaseWidget
@@ -30,4 +31,6 @@ export const WIDGET_TYPE_MAP: Record<string, WidgetConstructor> = {
   string: TextWidget,
   // @ts-expect-error #616
   text: TextWidget,
+  // @ts-expect-error #616
+  header: HeaderWidget,
 }

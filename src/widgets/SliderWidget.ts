@@ -50,7 +50,7 @@ export class SliderWidget extends BaseWidget implements ISliderWidget {
     nvalue = clamp(nvalue, 0, 1)
 
     // Draw slider bar
-    ctx.fillStyle = this.options.slider_color ?? "#678"
+    ctx.fillStyle = this.options.slider_color ?? "#636994"
     ctx.fillRect(margin, y, nvalue * (width - margin * 2), height)
 
     // Draw outline if not disabled
