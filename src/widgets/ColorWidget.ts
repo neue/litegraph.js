@@ -20,6 +20,8 @@ let currentOptions: {
   node: LGraphNode;
   canvas: LGraphCanvas;
 } | null = null;
+let pendingUpdate = false;
+let animationFrameId: number | null = null;
 
 // Create and get the global color input
 function getGlobalColorInput(): HTMLInputElement {
@@ -40,16 +42,45 @@ function getGlobalColorInput(): HTMLInputElement {
     globalColorInput.addEventListener("input", handleColorChange);
     // Handle blur for cleanup
     globalColorInput.addEventListener("blur", hideGlobalColorInput);
-    // Handle change for cleanup
+    // Handle change for final value
     globalColorInput.addEventListener("change", () => {
+      // Always apply the final value immediately
+      if (globalColorInput && currentColorWidget && currentOptions) {
+        applyColorChange();
+      }
       setTimeout(hideGlobalColorInput, 100);
     });
   }
   return globalColorInput;
 }
 
-// Handle color input changes
+// Schedule a color update for next animation frame
 function handleColorChange() {
+  if (!globalColorInput || !currentColorWidget || !currentOptions) return;
+  
+  // Skip if value hasn't changed
+  if (globalColorInput.value === currentColorWidget.value) return;
+  
+  // If we don't have a pending update, schedule one for the next frame
+  if (!pendingUpdate) {
+    pendingUpdate = true;
+    
+    // Cancel any existing animation frame request
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId);
+    }
+    
+    // Schedule the update for the next animation frame
+    animationFrameId = requestAnimationFrame(() => {
+      applyColorChange();
+      pendingUpdate = false;
+      animationFrameId = null;
+    });
+  }
+}
+
+// Apply the current color change
+function applyColorChange() {
   if (globalColorInput && currentColorWidget && currentOptions) {
     currentColorWidget.setValue(globalColorInput.value, currentOptions);
   }
@@ -61,6 +92,14 @@ function hideGlobalColorInput() {
     globalColorInput.style.left = "-9999px";
     globalColorInput.style.top = "-9999px";
   }
+  
+  // Cancel any pending animation frame
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+  
+  pendingUpdate = false;
   currentColorWidget = null;
   currentOptions = null;
 }
@@ -167,9 +206,12 @@ export class ColorWidget extends BaseWidget implements IColorWidget {
     // Set the current color
     colorInput.value = this.value;
     
-    // Position using the same logic as canvas.prompt
-    const canvasElement = canvas.canvas as HTMLCanvasElement;
-    const rect = canvasElement.getBoundingClientRect();
+    // Reset any pending updates
+    pendingUpdate = false;
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    }
     
     // Position where the mouse is
     colorInput.style.left = `${e.clientX}px`;
