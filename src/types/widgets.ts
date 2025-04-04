@@ -64,6 +64,7 @@ export type IWidget =
   | ISliderWidget
   | IButtonWidget
   | IKnobWidget
+  | IColorWidget
 
 export interface IBooleanWidget extends IBaseWidget {
   type: "toggle"
@@ -125,6 +126,13 @@ export interface IMultilineStringWidget<TElement extends HTMLElement = HTMLTextA
 export interface ICustomWidget extends IBaseWidget {
   type: "custom"
   value: string | object
+}
+
+/** A color picker widget */
+export interface IColorWidget extends IBaseWidget {
+  type: "color"
+  value: string
+  options: IWidgetOptions<string>
 }
 
 /**

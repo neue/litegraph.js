@@ -3,6 +3,7 @@ import type { IBaseWidget } from "@/types/widgets"
 import { BaseWidget } from "./BaseWidget"
 import { BooleanWidget } from "./BooleanWidget"
 import { ButtonWidget } from "./ButtonWidget"
+import { ColorWidget } from "./ColorWidget"
 import { ComboWidget } from "./ComboWidget"
 import { KnobWidget } from "./KnobWidget"
 import { NumberWidget } from "./NumberWidget"
@@ -33,4 +34,6 @@ export const WIDGET_TYPE_MAP: Record<string, WidgetConstructor> = {
   text: TextWidget,
   // @ts-expect-error #616
   header: HeaderWidget,
+  // @ts-expect-error #616
+  color: ColorWidget,
 }
