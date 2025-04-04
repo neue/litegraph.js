@@ -24,13 +24,20 @@ export class NumberWidget extends BaseWidget implements INumericWidget {
     node: LGraphNode
     canvas: LGraphCanvas
   }) {
+    console.log("WIDGET_VALUE_SET", value, this.options);
     let newValue = value
+
+    if (this.options?.round) {
+      newValue = Math.round(newValue / (this.options.round as number)) * (this.options.round as number);      
+    }
+
     if (this.options.min != null && newValue < this.options.min) {
       newValue = this.options.min
     }
     if (this.options.max != null && newValue > this.options.max) {
       newValue = this.options.max
     }
+    
     super.setValue(newValue, options)
   }
 
@@ -91,15 +98,22 @@ export class NumberWidget extends BaseWidget implements INumericWidget {
       // Draw value
       ctx.fillStyle = this.text_color
       ctx.textAlign = "right"
+      let formatted: string;
+      if (this.options.round !== undefined && this.options.round !== null) {
+        // Convert round to a string, then count decimals
+        const roundString = this.options.round.toString();
+        const decimalPart = roundString.split('.')[1];
+        const precision = decimalPart ? decimalPart.length : 0;
+        formatted = Number(this.value).toFixed(precision);
+      } else {
+        // Default behavior with 3 decimals
+        formatted = Number(this.value).toFixed(3);
+      }
       ctx.fillText(
-        Number(this.value).toFixed(
-          this.options.precision !== undefined
-            ? this.options.precision
-            : 3,
-        ),
+        formatted,
         width - margin * 2 - 20,
         y + height * 0.7,
-      )
+      );
     }
 
     // Restore original context attributes

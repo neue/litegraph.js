@@ -165,11 +165,11 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
    * The font style used to render the node's title text.
    */
   get titleFontStyle(): string {
-    return `${LiteGraph.NODE_TEXT_SIZE}px Arial`
+    return `${LiteGraph.NODE_TEXT_SIZE}px Fira`
   }
 
   get innerFontStyle(): string {
-    return `normal ${LiteGraph.NODE_SUBTEXT_SIZE}px Arial`
+    return `normal ${LiteGraph.NODE_SUBTEXT_SIZE}px Fira`
   }
 
   graph: LGraph | null = null
