@@ -119,10 +119,23 @@ function hideGlobalColorInput() {
     animationFrameId = null;
   }
   
+  // Check if we're just closing the color picker after a color change
+  // or if we're actually clearing selection
+  const justChangedColor = 
+    globalColorInput && 
+    activeGradientWidget && 
+    currentOptions && 
+    activeStopIndex !== -1;
+    
   pendingUpdate = false;
-  activeGradientWidget = null;
-  activeStopIndex = -1;
-  currentOptions = null;
+  
+  // Only reset all state when we're completely closing interaction,
+  // not when we just changed a color
+  if (!justChangedColor) {
+    activeGradientWidget = null;
+    activeStopIndex = -1;
+    currentOptions = null;
+  }
 }
 
 export class GradientWidget extends BaseWidget implements IGradientWidget {
