@@ -321,6 +321,8 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
    * Check if point is within the gradient rect
    */
   private isOverGradient(x: number, y: number): boolean {
+    console.log("isOverGradient");
+    
     return (
       x >= this.gradientRect.x && 
       x <= this.gradientRect.x + this.gradientRect.width && 
@@ -370,6 +372,7 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     node: LGraphNode
     canvas: LGraphCanvas
   }) {
+    console.log("onClick");
     if (this.options.read_only) return;
 
     const { e, node, canvas } = options;
@@ -392,6 +395,8 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     
     // Check if clicking on the gradient
     if (this.isOverGradient(x, y)) {
+      console.log("onclick isOverGradient true");
+      
       // Add a new stop
       const position = this.getNormalizedPosition(x, y);
       const color = this.getColorAtPosition(position);
