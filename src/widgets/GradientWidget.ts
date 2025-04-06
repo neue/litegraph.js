@@ -280,7 +280,7 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       ctx.textAlign = "left";
       const label = this.label || this.name;
       if (label != null) {
-        ctx.fillText(label, margin, y + height * 0.08);
+        ctx.fillText(label, margin, y + 10 + height * 0.08);
       }
     }
     
