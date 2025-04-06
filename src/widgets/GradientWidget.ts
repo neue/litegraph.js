@@ -145,8 +145,7 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     const originalLineWidth = ctx.lineWidth;
     
     const { height } = this;
-    const isVertical = this.options.vertical === true;
-    const stopSize = this.options.stop_size || 12;
+    const stopSize = 14;
     const halfStopSize = stopSize / 2;
     
     // Draw background
@@ -155,8 +154,8 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     ctx.strokeStyle = this.options.border_color || this.outline_color;
     
     // Draw gradient container
-    const gradientHeight = isVertical ? height - stopSize : height * 0.65;
-    const gradientY = isVertical ? y : y + (height - gradientHeight) / 2;
+    const gradientHeight = height * 0.65;
+    const gradientY = y + (height - gradientHeight) / 2;
     
     // Store gradient rect for interaction
     this.gradientRect = {
@@ -176,9 +175,7 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       const sortedStops = [...this.value].sort((a, b) => a.position - b.position);
       
       // Create gradient
-      const gradient = isVertical
-        ? ctx.createLinearGradient(0, gradientY, 0, gradientY + gradientHeight)
-        : ctx.createLinearGradient(margin, 0, width - margin, 0);
+      const gradient = ctx.createLinearGradient(margin, 0, width - margin, 0);
       
       // Add color stops
       for (const stop of sortedStops) {
@@ -192,9 +189,7 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     // Draw handles/stops if not disabled
     if (!this.disabled) {
       // Track for stop position
-      const trackY = isVertical 
-        ? gradientY // For vertical, the track is the gradient itself
-        : gradientY + gradientHeight + 6; // For horizontal, track is below the gradient
+      const trackY = gradientY + gradientHeight + 6; // Track is below the gradient
       
       // Draw stop markers
       for (let i = 0; i < this.value.length; i++) {
@@ -203,32 +198,18 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
         const isHovered = i === this.hoverStopIndex;
         
         // Calculate stop position
-        const stopX = isVertical 
-          ? margin + (width - margin * 2) / 2 // Center for vertical
-          : margin + stop.position * (width - margin * 2); // Position for horizontal
-        
-        const stopY = isVertical
-          ? gradientY + stop.position * gradientHeight // Position for vertical
-          : trackY; // Fixed for horizontal
+        const stopX = margin + stop.position * (width - margin * 2); // Position for horizontal
+        const stopY = trackY; // Fixed for horizontal
         
         // Draw stop marker
         ctx.beginPath();
         ctx.fillStyle = stop.color;
         
-        if (isVertical) {
-          // Draw horizontal marker for vertical gradient
-          ctx.moveTo(stopX - halfStopSize, stopY);
-          ctx.lineTo(stopX, stopY - halfStopSize);
-          ctx.lineTo(stopX + halfStopSize, stopY);
-          ctx.lineTo(stopX + halfStopSize, stopY + halfStopSize);
-          ctx.lineTo(stopX - halfStopSize, stopY + halfStopSize);
-        } else {
-          // Draw arrow/triangle marker for horizontal gradient
-          ctx.moveTo(stopX, stopY - halfStopSize);
-          ctx.lineTo(stopX + halfStopSize, stopY);
-          ctx.lineTo(stopX, stopY + halfStopSize);
-          ctx.lineTo(stopX - halfStopSize, stopY);
-        }
+        // Draw arrow/triangle marker
+        ctx.moveTo(stopX, stopY - halfStopSize);
+        ctx.lineTo(stopX + halfStopSize, stopY);
+        ctx.lineTo(stopX, stopY + halfStopSize);
+        ctx.lineTo(stopX - halfStopSize, stopY);
         
         ctx.closePath();
         ctx.fill();
@@ -263,26 +244,18 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
    * Checks if a point is over a gradient stop
    */
   private getStopAtPosition(x: number, y: number): number {
-    const stopSize = this.options.stop_size || 12;
-    const hitArea = stopSize * 1.5; // Make the hit area larger than the visual size
-    const isVertical = this.options.vertical === true;
+    const stopSize = 14;
+    const hitArea = stopSize * 1.0; // Make the hit area larger than the visual size
     
     // Calculate track position
-    const trackY = isVertical 
-      ? 0 // For vertical, the entire gradient area
-      : this.gradientRect.y + this.gradientRect.height + 6; // For horizontal, track is below
+    const trackY = this.gradientRect.y + this.gradientRect.height + 6; // Track is below
       
     for (let i = 0; i < this.value.length; i++) {
       const stop = this.value[i];
       
       // Calculate stop position
-      const stopX = isVertical 
-        ? this.gradientRect.x + this.gradientRect.width / 2 // Center for vertical
-        : this.gradientRect.x + stop.position * this.gradientRect.width; // Position for horizontal
-      
-      const stopY = isVertical
-        ? this.gradientRect.y + stop.position * this.gradientRect.height // Position for vertical
-        : trackY; // Fixed for horizontal
+      const stopX = this.gradientRect.x + stop.position * this.gradientRect.width; // Position for horizontal
+      const stopY = trackY; // Fixed for horizontal
       
       // Check if point is within the stop marker (with larger hit area)
       if (Math.abs(x - stopX) <= hitArea / 2 && Math.abs(y - stopY) <= hitArea / 2) {
@@ -309,13 +282,7 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
    * Get normalized position (0-1) from x, y coordinates
    */
   private getNormalizedPosition(x: number, y: number): number {
-    const isVertical = this.options.vertical === true;
-    
-    if (isVertical) {
-      return Math.max(0, Math.min(1, (y - this.gradientRect.y) / this.gradientRect.height));
-    } else {
-      return Math.max(0, Math.min(1, (x - this.gradientRect.x) / this.gradientRect.width));
-    }
+    return Math.max(0, Math.min(1, (x - this.gradientRect.x) / this.gradientRect.width));
   }
   
   /**
@@ -327,10 +294,6 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     canvas: LGraphCanvas
   }): number {
     const minStops = this.options.min_stops || 2;
-    const maxStops = this.options.max_stops || 10;
-    
-    // Check if we can add more stops
-    if (this.value.length >= maxStops) return -1;
     
     // Create new stops array with the new stop
     const newStops = [...this.value, { position, color }];
@@ -396,24 +359,12 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     this.processMouseMove(x, y);
     
     // Check if clicking on a stop
-    const stopIndex = this.getStopAtPosition(x, y);
-    if (stopIndex !== -1) {
-      // If we were dragging and released on a different stop, just end the drag
-      if (this.draggingStopIndex !== -1) {
-        this.draggingStopIndex = -1;
-        node.captureInput(false);
-        return true;
-      }
+    if (this.hoverStopIndex !== -1) {
+      // Start dragging this stop
+      this.draggingStopIndex = this.hoverStopIndex;
       
-      // Open color picker for the stop
-      this.openColorPicker(stopIndex, options);
-      return true;
-    }
-    
-    // If we were dragging, end it
-    if (this.draggingStopIndex !== -1) {
-      this.draggingStopIndex = -1;
-      node.captureInput(false);
+      // Capture mouse
+      node.captureInput(true);
       return true;
     }
     
@@ -437,18 +388,6 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   }
   
   /**
-   * Handle mouse up events
-   */
-  onMouseUp(e: CanvasMouseEvent, localPos: [number, number], node: LGraphNode) {
-    if (this.draggingStopIndex !== -1) {
-      this.draggingStopIndex = -1;
-      node.captureInput(false);
-      return true;
-    }
-    return false;
-  }
-  
-  /**
    * Handle drag events
    */
   override onDrag(options: {
@@ -463,17 +402,7 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     const y = e.canvasY - node.pos[1];
     
     // Always update hover state
-    this.processMouseMove(x, y);
-    
-    // Only start dragging if this is the initial drag event (mousedown) on a stop
-    if (this.draggingStopIndex === -1 && e.type === "pointerdown") {
-      const stopIndex = this.getStopAtPosition(x, y);
-      if (stopIndex !== -1) {
-        this.draggingStopIndex = stopIndex;
-        node.captureInput(true);
-      }
-      return stopIndex !== -1; // Return true if we started dragging
-    }
+    const hoverChanged = this.processMouseMove(x, y);
     
     // Handle dragging stops
     if (this.draggingStopIndex !== -1) {
@@ -483,8 +412,60 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       const newStops = [...this.value];
       newStops[this.draggingStopIndex].position = position;
       
-      // Update the value
-      this.setValue(newStops, options);
+      // Check if the stop is being dragged outside the gradient area
+      const outsideGradient = !this.isOverGradient(x, y) && 
+        (Math.abs(x - this.gradientRect.x) > 20 || // Allow some margin for vertical movement
+        Math.abs(x - (this.gradientRect.x + this.gradientRect.width)) > 20);
+      
+    //   if (outsideGradient) {
+    //     // Remove the stop
+    //     this.removeStop(this.draggingStopIndex, options);
+    //     this.draggingStopIndex = -1;
+    //     node.captureInput(false);
+    //   } else {
+        // Update the value
+        this.setValue(newStops, options);
+    //   }
+      
+      return true;
+    }
+    
+    // Return true if hover state changed to trigger redraw
+    return hoverChanged;
+  }
+  
+  /**
+   * Add a mouse handler
+   */
+  onMouseMove(e: CanvasMouseEvent, localPos: [number, number], node: LGraphNode) {
+    if (this.disabled) return false;
+    
+    // Update hover state on any mouse movement
+    const hoverChanged = this.processMouseMove(localPos[0], localPos[1]);
+    
+    // Return true to mark the canvas as dirty and trigger a redraw if hover state changed
+    return hoverChanged;
+  }
+  
+  // Add onMouseUp handler to release capture if the node doesn't do it
+  onMouseUp(e: CanvasMouseEvent, localPos: [number, number], node: LGraphNode, canvas: LGraphCanvas) {
+    if (this.draggingStopIndex !== -1) {
+      // Check if we only clicked (didn't really drag)
+      const stopPosition = this.value[this.draggingStopIndex].position;
+      const currentPosition = this.getNormalizedPosition(localPos[0], localPos[1]);
+      const isDrag = Math.abs(stopPosition - currentPosition) > 0.01;
+      
+      // If we just clicked and didn't drag, open the color picker
+      if (!isDrag) {
+        this.openColorPicker(this.draggingStopIndex, {
+          e,
+          node,
+          canvas
+        });
+      }
+      
+      this.draggingStopIndex = -1;
+      node.captureInput(false);
       return true;
     }
     
