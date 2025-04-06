@@ -28,42 +28,53 @@ function getGlobalColorInput(): HTMLInputElement {
     globalColorInput.style.padding = "0";
     globalColorInput.style.border = "none"; 
     globalColorInput.style.opacity = "0";
+    globalColorInput.style.pointerEvents = "none";
     globalColorInput.style.zIndex = "10000";
     document.body.appendChild(globalColorInput);
     
-    // Handle color changes immediately
-    globalColorInput.addEventListener("input", () => {
-      if (globalColorInput && activeGradientWidget && currentOptions && activeStopIndex !== -1) {
-        const stops = [...activeGradientWidget.value];
-        stops[activeStopIndex].color = globalColorInput.value;
-        activeGradientWidget.setValue(stops, currentOptions);
-      }
-    });
+    // Handle color changes with animation frame throttling
+    globalColorInput.addEventListener("input", handleColorChange);
     
-    // Handle blur and change to hide
+    // Handle blur for cleanup
     globalColorInput.addEventListener("blur", hideGlobalColorInput);
-    globalColorInput.addEventListener("change", hideGlobalColorInput);
+    
+    // Handle change for final value
+    globalColorInput.addEventListener("change", () => {
+      // Always apply the final value immediately
+      if (globalColorInput && activeGradientWidget && currentOptions && activeStopIndex !== -1) {
+        applyColorChange();
+      }
+      setTimeout(hideGlobalColorInput, 100);
+    });
   }
   return globalColorInput;
 }
 
 // Schedule a color update for next animation frame
 function handleColorChange() {
+    console.log("handleColorChange");
+    
   if (!globalColorInput || !activeGradientWidget || !currentOptions || activeStopIndex === -1) return;
   
-  // If we don't have a pending update, schedule one for the next frame
-  if (!pendingUpdate) {
-    pendingUpdate = true;
-    
-    // Cancel any existing animation frame request
-    if (animationFrameId !== null) {
-      cancelAnimationFrame(animationFrameId);
-    }
-    
-    // Schedule the update for the next animation frame
+  // Get the current color of the active stop
+  const currentColor = activeGradientWidget.value[activeStopIndex]?.color;
+  
+  // Skip if value hasn't changed
+  if (globalColorInput.value === currentColor) return;
+  
+  pendingUpdate = true;
+  
+  // Use animation frame throttling to avoid too many updates
+  if (animationFrameId === null) {
     animationFrameId = requestAnimationFrame(() => {
-      applyColorChange();
-      pendingUpdate = false;
+      if (pendingUpdate) {
+        applyColorChange();
+        
+        // Make sure the node is redrawn by setting the dirty canvas
+        if (currentOptions?.node) {
+          currentOptions.node.setDirtyCanvas(true, true);
+        }
+      }
       animationFrameId = null;
     });
   }
@@ -71,15 +82,32 @@ function handleColorChange() {
 
 // Apply the current color change to the active stop
 function applyColorChange() {
+    console.log("applyColorChange");
   if (globalColorInput && activeGradientWidget && currentOptions && activeStopIndex !== -1) {
     const stops = [...activeGradientWidget.value];
     stops[activeStopIndex].color = globalColorInput.value;
     activeGradientWidget.setValue(stops, currentOptions);
+    
+    // Make sure the node is redrawn
+    if (currentOptions.node) {
+      currentOptions.node.setDirtyCanvas(true, true);
+    }
   }
+  pendingUpdate = false;
 }
 
 // Hide the global color input
 function hideGlobalColorInput() {
+  // Apply any pending changes before hiding
+  if (pendingUpdate && globalColorInput && activeGradientWidget && currentOptions && activeStopIndex !== -1) {
+    applyColorChange();
+  }
+  
+  // Force one last redraw
+  if (currentOptions?.node) {
+    currentOptions.node.setDirtyCanvas(true, true);
+  }
+  
   if (globalColorInput) {
     globalColorInput.style.left = "-9999px";
     globalColorInput.style.top = "-9999px";
@@ -137,6 +165,8 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     show_text = true,
     margin = 15,
   }: DrawWidgetOptions) {
+    console.log("drawWidget");
+    
     // Store original context attributes
     const originalTextAlign = ctx.textAlign;
     const originalStrokeStyle = ctx.strokeStyle;
@@ -533,25 +563,43 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   }) {
     const { e } = options;
     
-    // Set active widget and stop
+    // Set active widget and stop for callbacks
     activeGradientWidget = this;
     activeStopIndex = stopIndex;
     currentOptions = options;
     
     // Get and position color input
     const colorInput = getGlobalColorInput();
+    
+    // Set the current color before positioning
     colorInput.value = this.value[stopIndex].color;
     
     // Position where the mouse is
     colorInput.style.left = `${e.clientX}px`;
     colorInput.style.top = `${e.clientY}px`;
     
-    // Make it functional
+    // Reset pending update state
+    pendingUpdate = false;
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    }
+    
+    // Make the input active for the click
     colorInput.style.pointerEvents = "auto";
     
-    // Open the color picker directly
-    colorInput.focus();
-    colorInput.click();
+    // Focus and click the input to open the color picker
+    setTimeout(() => {
+      colorInput.focus();
+      colorInput.click();
+      
+      // After opening, disable pointer events
+      setTimeout(() => {
+        if (globalColorInput) {
+          globalColorInput.style.pointerEvents = "none";
+        }
+      }, 100);
+    }, 10);
   }
 
   /**
