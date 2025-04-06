@@ -28,24 +28,21 @@ function getGlobalColorInput(): HTMLInputElement {
     globalColorInput.style.padding = "0";
     globalColorInput.style.border = "none"; 
     globalColorInput.style.opacity = "0";
-    globalColorInput.style.pointerEvents = "none";
     globalColorInput.style.zIndex = "10000";
     document.body.appendChild(globalColorInput);
     
-    // Handle color changes with animation frame throttling
-    globalColorInput.addEventListener("input", handleColorChange);
-    
-    // Handle blur for cleanup
-    globalColorInput.addEventListener("blur", hideGlobalColorInput);
-    
-    // Handle change for final value
-    globalColorInput.addEventListener("change", () => {
-      // Always apply the final value immediately
+    // Handle color changes immediately
+    globalColorInput.addEventListener("input", () => {
       if (globalColorInput && activeGradientWidget && currentOptions && activeStopIndex !== -1) {
-        applyColorChange();
+        const stops = [...activeGradientWidget.value];
+        stops[activeStopIndex].color = globalColorInput.value;
+        activeGradientWidget.setValue(stops, currentOptions);
       }
-      setTimeout(hideGlobalColorInput, 100);
     });
+    
+    // Handle blur and change to hide
+    globalColorInput.addEventListener("blur", hideGlobalColorInput);
+    globalColorInput.addEventListener("change", hideGlobalColorInput);
   }
   return globalColorInput;
 }
@@ -529,27 +526,11 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     colorInput.style.left = `${e.clientX}px`;
     colorInput.style.top = `${e.clientY}px`;
     
-    // Reset pending update
-    pendingUpdate = false;
-    if (animationFrameId !== null) {
-      cancelAnimationFrame(animationFrameId);
-      animationFrameId = null;
-    }
-    
-    // Make the input active
+    // Make it functional
     colorInput.style.pointerEvents = "auto";
     
-    // Focus and click the input to open the color picker
-    setTimeout(() => {
-      colorInput.focus();
-      colorInput.click();
-      
-      // After opening, set pointer events to none
-      setTimeout(() => {
-        if (globalColorInput) {
-          globalColorInput.style.pointerEvents = "none";
-        }
-      }, 100);
-    }, 10);
+    // Open the color picker directly
+    colorInput.focus();
+    colorInput.click();
   }
 } 
