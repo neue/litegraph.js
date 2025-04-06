@@ -107,8 +107,10 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   
   // State variables for interaction
   private draggingStopIndex: number = -1;
-  private hoverStopIndex: number = -1;
+  
+  // Stored areas for interaction
   private gradientRect: { x: number, y: number, width: number, height: number } = { x: 0, y: 0, width: 0, height: 0 };
+  private stopAreaRect: { x: number, y: number, width: number, height: number } = { x: 0, y: 0, width: 0, height: 0 };
   
   constructor(widget: IGradientWidget) {
     super(widget);
@@ -148,16 +150,13 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     const stopSize = 14;
     const halfStopSize = stopSize / 2;
     
-    // Draw background
-    ctx.fillStyle = this.options.background_color || this.background_color;
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = this.options.border_color || this.outline_color;
+    // Constants for layout
+    const gradientHeight = height * 0.5;
+    const stopAreaHeight = height * 0.3;
+    const gradientY = y + height * 0.1;
+    const stopAreaY = gradientY + gradientHeight + 5;
     
-    // Draw gradient container
-    const gradientHeight = height * 0.65;
-    const gradientY = y + (height - gradientHeight) / 2;
-    
-    // Store gradient rect for interaction
+    // Store areas for interaction
     this.gradientRect = {
       x: margin,
       y: gradientY,
@@ -165,9 +164,24 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       height: gradientHeight
     };
     
-    // Draw gradient container
+    this.stopAreaRect = {
+      x: margin,
+      y: stopAreaY,
+      width: width - margin * 2,
+      height: stopAreaHeight
+    };
+    
+    // Draw gradient container with border
+    ctx.fillStyle = this.options.background_color || this.background_color;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = this.options.border_color || this.outline_color;
     ctx.fillRect(margin, gradientY, width - margin * 2, gradientHeight);
     ctx.strokeRect(margin, gradientY, width - margin * 2, gradientHeight);
+    
+    // Draw stop area with light grey background
+    ctx.fillStyle = "#e0e0e0";
+    ctx.fillRect(margin, stopAreaY, width - margin * 2, stopAreaHeight);
+    ctx.strokeRect(margin, stopAreaY, width - margin * 2, stopAreaHeight);
     
     // Draw the actual gradient
     if (this.value.length >= 2) {
@@ -188,24 +202,23 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     
     // Draw handles/stops if not disabled
     if (!this.disabled) {
-      // Track for stop position
-      const trackY = gradientY + gradientHeight + 6; // Track is below the gradient
+      // Draw track in the middle of the stop area
+      const trackY = stopAreaY + stopAreaHeight / 2;
       
       // Draw stop markers
       for (let i = 0; i < this.value.length; i++) {
         const stop = this.value[i];
         const isSelected = i === activeStopIndex;
-        const isHovered = i === this.hoverStopIndex;
         
         // Calculate stop position
-        const stopX = margin + stop.position * (width - margin * 2); // Position for horizontal
-        const stopY = trackY; // Fixed for horizontal
+        const stopX = margin + stop.position * (width - margin * 2);
+        const stopY = trackY;
         
         // Draw stop marker
         ctx.beginPath();
         ctx.fillStyle = stop.color;
         
-        // Draw arrow/triangle marker
+        // Draw diamond-shaped marker
         ctx.moveTo(stopX, stopY - halfStopSize);
         ctx.lineTo(stopX + halfStopSize, stopY);
         ctx.lineTo(stopX, stopY + halfStopSize);
@@ -214,11 +227,9 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
         ctx.closePath();
         ctx.fill();
         
-        // Draw border with thicker stroke for selected/hovered
+        // Draw border - yellow for selected, black otherwise
         ctx.lineWidth = isSelected ? 2 : 1;
-        ctx.strokeStyle = isSelected 
-          ? "#ff9900" 
-          : (isHovered ? "#ffffff" : "#000000");
+        ctx.strokeStyle = isSelected ? "#ff9900" : "#000000";
         ctx.stroke();
       }
     }
@@ -229,7 +240,7 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       ctx.textAlign = "left";
       const label = this.label || this.name;
       if (label != null) {
-        ctx.fillText(label, margin, y + height * 0.25);
+        ctx.fillText(label, margin, y + height * 0.08);
       }
     }
     
@@ -245,8 +256,8 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
    */
   private getStopAtPosition(x: number, y: number): number {
     const stopSize = 14;
-    const hitArea = stopSize * 1.0; // Make the hit area larger than the visual size
-    
+    const hitArea = stopSize * 1.5; // Make the hit area larger than the visual size
+      
     // Calculate track position
     const trackY = this.gradientRect.y + this.gradientRect.height + 6; // Track is below
       
@@ -254,10 +265,10 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       const stop = this.value[i];
       
       // Calculate stop position
-      const stopX = this.gradientRect.x + stop.position * this.gradientRect.width; // Position for horizontal
-      const stopY = trackY; // Fixed for horizontal
+      const stopX = this.gradientRect.x + stop.position * this.gradientRect.width;
+      const stopY = trackY;
       
-      // Check if point is within the stop marker (with larger hit area)
+      // Check if point is within the stop marker
       if (Math.abs(x - stopX) <= hitArea / 2 && Math.abs(y - stopY) <= hitArea / 2) {
         return i;
       }
@@ -275,6 +286,18 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       x <= this.gradientRect.x + this.gradientRect.width && 
       y >= this.gradientRect.y && 
       y <= this.gradientRect.y + this.gradientRect.height
+    );
+  }
+
+  /**
+   * Check if point is within the stop area
+   */
+  private isInStopArea(x: number, y: number): boolean {
+    return (
+      x >= this.stopAreaRect.x && 
+      x <= this.stopAreaRect.x + this.stopAreaRect.width && 
+      y >= this.stopAreaRect.y && 
+      y <= this.stopAreaRect.y + this.stopAreaRect.height
     );
   }
   
@@ -311,37 +334,6 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   }
   
   /**
-   * Remove a gradient stop
-   */
-  private removeStop(index: number, options: {
-    e: CanvasMouseEvent,
-    node: LGraphNode,
-    canvas: LGraphCanvas
-  }): void {
-    const minStops = this.options.min_stops || 2;
-    
-    // Check if we can remove stops
-    if (this.value.length <= minStops) return;
-    
-    // Create new stops array without the selected stop
-    const newStops = this.value.filter((_, i) => i !== index);
-    
-    // Update the value
-    this.setValue(newStops, options);
-  }
-  
-  /**
-   * Handle mouse events internally to consistently update hover state 
-   */
-  private processMouseMove(x: number, y: number) {
-    // Always update hover state on any mouse movement
-    const prevHoverIndex = this.hoverStopIndex;
-    this.hoverStopIndex = this.getStopAtPosition(x, y);
-    
-    return prevHoverIndex !== this.hoverStopIndex;
-  }
-  
-  /**
    * Handle click events
    */
   override onClick(options: {
@@ -355,16 +347,20 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     const x = e.canvasX - node.pos[0];
     const y = e.canvasY - node.pos[1];
     
-    // Always update hover state
-    this.processMouseMove(x, y);
-    
     // Check if clicking on a stop
-    if (this.hoverStopIndex !== -1) {
-      // Start dragging this stop
-      this.draggingStopIndex = this.hoverStopIndex;
-      
-      // Capture mouse
-      node.captureInput(true);
+    const clickedStopIndex = this.getStopAtPosition(x, y);
+    if (clickedStopIndex !== -1) {
+      // If clicking the already selected stop, open color picker
+      if (clickedStopIndex === activeStopIndex) {
+        this.openColorPicker(clickedStopIndex, options);
+      } else {
+        // Select this stop
+        activeStopIndex = clickedStopIndex;
+        
+        // Start dragging
+        this.draggingStopIndex = clickedStopIndex;
+        node.captureInput(true);
+      }
       return true;
     }
     
@@ -372,15 +368,20 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     if (this.isOverGradient(x, y)) {
       // Add a new stop
       const position = this.getNormalizedPosition(x, y);
-      
-      // Use the color at this position in the gradient
       const color = this.getColorAtPosition(position);
       
-      // Add the stop and open color picker
+      // Add the stop and select it
       const newStopIndex = this.addStop(position, color, options);
       if (newStopIndex !== -1) {
-        this.openColorPicker(newStopIndex, options);
+        activeStopIndex = newStopIndex;
       }
+      
+      return true;
+    }
+    
+    // Deselect when clicking elsewhere
+    if (activeStopIndex !== -1) {
+      activeStopIndex = -1;
       return true;
     }
     
@@ -388,7 +389,7 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   }
   
   /**
-   * Handle drag events
+   * Handle drag events - update the position using the mouse event
    */
   override onDrag(options: {
     e: CanvasMouseEvent
@@ -401,75 +402,20 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     const x = e.canvasX - node.pos[0];
     const y = e.canvasY - node.pos[1];
     
-    // Always update hover state
-    const hoverChanged = this.processMouseMove(x, y);
+    // If not dragging, nothing to do
+    if (this.draggingStopIndex === -1) return false;
     
-    // Handle dragging stops
-    if (this.draggingStopIndex !== -1) {
-      const position = this.getNormalizedPosition(x, y);
-      
-      // Create new stops array with updated position
-      const newStops = [...this.value];
-      newStops[this.draggingStopIndex].position = position;
-      
-      // Check if the stop is being dragged outside the gradient area
-      const outsideGradient = !this.isOverGradient(x, y) && 
-        (Math.abs(x - this.gradientRect.x) > 20 || // Allow some margin for vertical movement
-        Math.abs(x - (this.gradientRect.x + this.gradientRect.width)) > 20);
-      
-    //   if (outsideGradient) {
-    //     // Remove the stop
-    //     this.removeStop(this.draggingStopIndex, options);
-    //     this.draggingStopIndex = -1;
-    //     node.captureInput(false);
-    //   } else {
-        // Update the value
-        this.setValue(newStops, options);
-    //   }
-      
-      return true;
-    }
+    // Update position of dragged stop
+    const position = this.getNormalizedPosition(x, y);
     
-    // Return true if hover state changed to trigger redraw
-    return hoverChanged;
-  }
-  
-  /**
-   * Add a mouse handler
-   */
-  onMouseMove(e: CanvasMouseEvent, localPos: [number, number], node: LGraphNode) {
-    if (this.disabled) return false;
+    // Create new stops array with updated position
+    const newStops = [...this.value];
+    newStops[this.draggingStopIndex].position = position;
     
-    // Update hover state on any mouse movement
-    const hoverChanged = this.processMouseMove(localPos[0], localPos[1]);
+    // Update the value
+    this.setValue(newStops, options);
     
-    // Return true to mark the canvas as dirty and trigger a redraw if hover state changed
-    return hoverChanged;
-  }
-  
-  // Add onMouseUp handler to release capture if the node doesn't do it
-  onMouseUp(e: CanvasMouseEvent, localPos: [number, number], node: LGraphNode, canvas: LGraphCanvas) {
-    if (this.draggingStopIndex !== -1) {
-      // Check if we only clicked (didn't really drag)
-      const stopPosition = this.value[this.draggingStopIndex].position;
-      const currentPosition = this.getNormalizedPosition(localPos[0], localPos[1]);
-      const isDrag = Math.abs(stopPosition - currentPosition) > 0.01;
-      
-      // If we just clicked and didn't drag, open the color picker
-      if (!isDrag) {
-        this.openColorPicker(this.draggingStopIndex, {
-          e,
-          node,
-          canvas
-        });
-      }
-      
-      this.draggingStopIndex = -1;
-      node.captureInput(false);
-      return true;
-    }
-    
-    return false;
+    return true;
   }
   
   /**
