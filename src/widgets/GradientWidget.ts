@@ -164,7 +164,7 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       this.value = widget.value;
     }
     
-    this.options = widget.options || {};
+    this.options = widget.options || { };
   }
   
   /**
@@ -212,9 +212,9 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     };
     
     // Draw gradient container with border
-    ctx.fillStyle = this.options.background_color || this.background_color;
+    ctx.fillStyle = this.background_color;
     ctx.lineWidth = 1;
-    ctx.strokeStyle = this.options.border_color || this.outline_color;
+    ctx.strokeStyle = this.outline_color;
     ctx.fillRect(margin, gradientY, width - margin * 2, gradientHeight);
     ctx.strokeRect(margin, gradientY, width - margin * 2, gradientHeight);
     

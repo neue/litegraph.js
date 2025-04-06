@@ -265,12 +265,7 @@ export interface IWidgetGradientStop {
 }
 
 export interface IWidgetGradientOptions extends IWidgetOptions<IWidgetGradientStop[]> {
-  vertical?: boolean;         // Whether the gradient is vertical or horizontal
-  background_color?: string;  // Background color for the gradient editor
-  border_color?: string;      // Border color for the gradient editor
   min_stops?: number;         // Minimum number of stops (default: 2)
-  max_stops?: number;         // Maximum number of stops (default: 10)
-  stop_size?: number;         // Size of the stop markers in pixels
 }
 
 export interface IGradientWidget extends IBaseWidget {
