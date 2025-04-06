@@ -105,8 +105,8 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   declare value: IWidgetGradientStop[];
   declare options: IWidgetGradientOptions;
   
-  // State variables for interaction
-  private draggingStopIndex: number = -1;
+  // State variable - only one needed for selection and dragging
+  private selectedStopIndex: number = -1;
   
   // Stored areas for interaction
   private gradientRect: { x: number, y: number, width: number, height: number } = { x: 0, y: 0, width: 0, height: 0 };
@@ -208,7 +208,7 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       // Draw stop markers
       for (let i = 0; i < this.value.length; i++) {
         const stop = this.value[i];
-        const isSelected = i === activeStopIndex;
+        const isSelected = i === this.selectedStopIndex;
         
         // Calculate stop position
         const stopX = margin + stop.position * (width - margin * 2);
@@ -334,6 +334,39 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   }
   
   /**
+   * Handle mouse down events
+   */
+  onMouseDown(e: CanvasMouseEvent, localPos: [number, number], node: LGraphNode) {
+    if (this.disabled || this.options.read_only) return false;
+    
+    const x = localPos[0];
+    const y = localPos[1];
+    
+    // Check if clicking on a stop
+    const clickedStopIndex = this.getStopAtPosition(x, y);
+    
+    // If clicking on a stop, select it for dragging
+    if (clickedStopIndex !== -1) {
+      // Select this stop - update both local and global selection
+      this.selectedStopIndex = clickedStopIndex;
+      activeStopIndex = clickedStopIndex;
+      
+      // Capture mouse for dragging
+      node.captureInput(true);
+      return true;
+    }
+    
+    // If clicking elsewhere, deselect
+    if (this.selectedStopIndex !== -1 || activeStopIndex !== -1) {
+      this.selectedStopIndex = -1;
+      activeStopIndex = -1;
+      return true;
+    }
+    
+    return false;
+  }
+  
+  /**
    * Handle click events
    */
   override onClick(options: {
@@ -350,16 +383,13 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     // Check if clicking on a stop
     const clickedStopIndex = this.getStopAtPosition(x, y);
     if (clickedStopIndex !== -1) {
-      // If clicking the already selected stop, open color picker
+      // If clicking the already selected/active stop, open color picker
       if (clickedStopIndex === activeStopIndex) {
         this.openColorPicker(clickedStopIndex, options);
       } else {
-        // Select this stop
+        // Select this stop - update both internal and global selection
+        this.selectedStopIndex = clickedStopIndex;
         activeStopIndex = clickedStopIndex;
-        
-        // Start dragging
-        this.draggingStopIndex = clickedStopIndex;
-        node.captureInput(true);
       }
       return true;
     }
@@ -373,14 +403,17 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       // Add the stop and select it
       const newStopIndex = this.addStop(position, color, options);
       if (newStopIndex !== -1) {
+        // Update both internal and global selection
+        this.selectedStopIndex = newStopIndex;
         activeStopIndex = newStopIndex;
       }
       
       return true;
     }
     
-    // Deselect when clicking elsewhere
-    if (activeStopIndex !== -1) {
+    // Clicking elsewhere deselects
+    if (activeStopIndex !== -1 || this.selectedStopIndex !== -1) {
+      this.selectedStopIndex = -1;
       activeStopIndex = -1;
       return true;
     }
@@ -402,20 +435,23 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     const x = e.canvasX - node.pos[0];
     const y = e.canvasY - node.pos[1];
     
-    // If not dragging, nothing to do
-    if (this.draggingStopIndex === -1) return false;
+    // Only drag if the internal selection matches the global activeStopIndex
+    // This prevents dragging stops that aren't visually selected with yellow outline
+    if (this.selectedStopIndex !== -1 && this.selectedStopIndex === activeStopIndex) {
+      // Update position of selected stop
+      const position = this.getNormalizedPosition(x, y);
+      
+      // Create new stops array with updated position
+      const newStops = [...this.value];
+      newStops[this.selectedStopIndex].position = position;
+      
+      // Update the value
+      this.setValue(newStops, options);
+      
+      return true;
+    }
     
-    // Update position of dragged stop
-    const position = this.getNormalizedPosition(x, y);
-    
-    // Create new stops array with updated position
-    const newStops = [...this.value];
-    newStops[this.draggingStopIndex].position = position;
-    
-    // Update the value
-    this.setValue(newStops, options);
-    
-    return true;
+    return false;
   }
   
   /**
