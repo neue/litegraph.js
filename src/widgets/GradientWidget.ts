@@ -435,7 +435,27 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     // Only drag if the internal selection matches the global activeStopIndex
     // This prevents dragging stops that aren't visually selected with yellow outline
     if (this.selectedStopIndex !== -1 && this.selectedStopIndex === activeStopIndex) {
-      // Update position of selected stop
+      // Check if dragging far enough down to delete the stop
+      const deleteThreshold = this.stopAreaRect.y + this.stopAreaRect.height + 50;
+      if (y > deleteThreshold && this.value.length > 2) {
+        // Remove the stop
+        const newStops = [...this.value];
+        newStops.splice(this.selectedStopIndex, 1);
+        
+        // Update the value
+        this.setValue(newStops, options);
+        
+        // Clear selection
+        this.selectedStopIndex = -1;
+        activeStopIndex = -1;
+        
+        // Release capture
+        node.captureInput(false);
+        
+        return true;
+      }
+      
+      // Otherwise, update position of selected stop horizontally
       const position = this.getNormalizedPosition(x, y);
       
       // Create new stops array with updated position
@@ -532,5 +552,68 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     // Open the color picker directly
     colorInput.focus();
     colorInput.click();
+  }
+
+  /**
+   * Remove a stop by index
+   */
+  private removeStop(index: number, options: {
+    e: CanvasMouseEvent,
+    node: LGraphNode,
+    canvas: LGraphCanvas
+  }) {
+    // Don't allow removing if we only have 2 stops
+    if (this.value.length <= 2) return;
+    
+    // Create new stops array without the selected stop
+    const newStops = this.value.filter((_, i) => i !== index);
+    
+    // Update the value
+    this.setValue(newStops, options);
+    
+    // Clear selection
+    this.selectedStopIndex = -1;
+    activeStopIndex = -1;
+  }
+
+  /**
+   * Handle global clicks outside this widget to deselect
+   * This needs to be called by the node hosting this widget
+   */
+  onGlobalClick(e: MouseEvent, node: LGraphNode, canvas: LGraphCanvas) {
+    // If we have something selected
+    if (this.selectedStopIndex !== -1) {
+      // Get position in canvas space
+      const rect = canvas.canvas.getBoundingClientRect();
+      if (!rect) return;
+      
+      const canvasX = e.clientX - rect.left;
+      const canvasY = e.clientY - rect.top;
+      
+      // Convert to node local space
+      const localX = canvasX - node.pos[0];
+      const localY = canvasY - node.pos[1];
+      
+      // Check if outside the widget area
+      const isOutsideWidget = 
+        localX < 0 || 
+        localX > node.size[0] ||
+        localY < 0 || 
+        localY > node.size[1];
+      
+      // Also check if outside both gradient and stop areas
+      const isOutsideGradientAndStopAreas = 
+        !this.isOverGradient(localX, localY) && 
+        !this.isInStopArea(localX, localY);
+      
+      // If outside the widget or both areas, deselect
+      if (isOutsideWidget || isOutsideGradientAndStopAreas) {
+        this.selectedStopIndex = -1;
+        activeStopIndex = -1;
+        return true;
+      }
+    }
+    
+    return false;
   }
 } 
