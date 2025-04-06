@@ -65,6 +65,7 @@ export type IWidget =
   | IButtonWidget
   | IKnobWidget
   | IColorWidget
+  | IGradientWidget
 
 export interface IBooleanWidget extends IBaseWidget {
   type: "toggle"
@@ -256,4 +257,24 @@ export interface IBaseWidget {
    * not process it any further.
    */
   onPointerDown?(pointer: CanvasPointer, node: LGraphNode, canvas: LGraphCanvas): boolean
+}
+
+export interface IWidgetGradientStop {
+  position: number; // 0 to 1
+  color: string;    // Color in hex format
+}
+
+export interface IWidgetGradientOptions extends IWidgetOptions<IWidgetGradientStop[]> {
+  vertical?: boolean;         // Whether the gradient is vertical or horizontal
+  background_color?: string;  // Background color for the gradient editor
+  border_color?: string;      // Border color for the gradient editor
+  min_stops?: number;         // Minimum number of stops (default: 2)
+  max_stops?: number;         // Maximum number of stops (default: 10)
+  stop_size?: number;         // Size of the stop markers in pixels
+}
+
+export interface IGradientWidget extends IBaseWidget {
+  type: "gradient";
+  value: IWidgetGradientStop[];
+  options: IWidgetGradientOptions;
 }

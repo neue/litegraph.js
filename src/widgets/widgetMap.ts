@@ -5,6 +5,7 @@ import { BooleanWidget } from "./BooleanWidget"
 import { ButtonWidget } from "./ButtonWidget"
 import { ColorWidget } from "./ColorWidget"
 import { ComboWidget } from "./ComboWidget"
+import { GradientWidget } from "./GradientWidget"
 import { KnobWidget } from "./KnobWidget"
 import { NumberWidget } from "./NumberWidget"
 import { SliderWidget } from "./SliderWidget"
@@ -36,4 +37,6 @@ export const WIDGET_TYPE_MAP: Record<string, WidgetConstructor> = {
   header: HeaderWidget,
   // @ts-expect-error #616
   color: ColorWidget,
+  // @ts-expect-error #616
+  gradient: GradientWidget,
 }
