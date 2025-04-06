@@ -330,18 +330,6 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   }
 
   /**
-   * Check if point is within the stop area
-   */
-  private isInStopArea(x: number, y: number): boolean {
-    return (
-      x >= this.stopAreaRect.x && 
-      x <= this.stopAreaRect.x + this.stopAreaRect.width && 
-      y >= this.stopAreaRect.y && 
-      y <= this.stopAreaRect.y + this.stopAreaRect.height
-    );
-  }
-  
-  /**
    * Get normalized position (0-1) from x, y coordinates
    */
   private getNormalizedPosition(x: number, y: number): number {
@@ -373,38 +361,6 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     return newStopIndex;
   }
   
-  /**
-   * Handle mouse down events
-   */
-  onMouseDown(e: CanvasMouseEvent, localPos: [number, number], node: LGraphNode) {
-    if (this.disabled || this.options.read_only) return false;
-    
-    const x = localPos[0];
-    const y = localPos[1];
-    
-    // Check if clicking on a stop
-    const clickedStopIndex = this.getStopAtPosition(x, y);
-    
-    // If clicking on a stop, select it for dragging
-    if (clickedStopIndex !== -1) {
-      // Select this stop - update both local and global selection
-      this.selectedStopIndex = clickedStopIndex;
-      activeStopIndex = clickedStopIndex;
-      
-      // Capture mouse for dragging
-      node.captureInput(true);
-      return true;
-    }
-    
-    // If clicking elsewhere, deselect
-    if (this.selectedStopIndex !== -1 || activeStopIndex !== -1) {
-      this.selectedStopIndex = -1;
-      activeStopIndex = -1;
-      return true;
-    }
-    
-    return false;
-  }
   
   /**
    * Handle click events
@@ -615,66 +571,6 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     }, 10);
   }
 
-  /**
-   * Remove a stop by index
-   */
-  private removeStop(index: number, options: {
-    e: CanvasMouseEvent,
-    node: LGraphNode,
-    canvas: LGraphCanvas
-  }) {
-    // Don't allow removing if we only have 2 stops
-    if (this.value.length <= 2) return;
-    
-    // Create new stops array without the selected stop
-    const newStops = this.value.filter((_, i) => i !== index);
-    
-    // Update the value
-    this.setValue(newStops, options);
-    
-    // Clear selection
-    this.selectedStopIndex = -1;
-    activeStopIndex = -1;
-  }
 
-  /**
-   * Handle global clicks outside this widget to deselect
-   * This needs to be called by the node hosting this widget
-   */
-  onGlobalClick(e: MouseEvent, node: LGraphNode, canvas: LGraphCanvas) {
-    // If we have something selected
-    if (this.selectedStopIndex !== -1) {
-      // Get position in canvas space
-      const rect = canvas.canvas.getBoundingClientRect();
-      if (!rect) return;
-      
-      const canvasX = e.clientX - rect.left;
-      const canvasY = e.clientY - rect.top;
-      
-      // Convert to node local space
-      const localX = canvasX - node.pos[0];
-      const localY = canvasY - node.pos[1];
-      
-      // Check if outside the widget area
-      const isOutsideWidget = 
-        localX < 0 || 
-        localX > node.size[0] ||
-        localY < 0 || 
-        localY > node.size[1];
-      
-      // Also check if outside both gradient and stop areas
-      const isOutsideGradientAndStopAreas = 
-        !this.isOverGradient(localX, localY) && 
-        !this.isInStopArea(localX, localY);
-      
-      // If outside the widget or both areas, deselect
-      if (isOutsideWidget || isOutsideGradientAndStopAreas) {
-        this.selectedStopIndex = -1;
-        activeStopIndex = -1;
-        return true;
-      }
-    }
-    
-    return false;
-  }
+
 } 
