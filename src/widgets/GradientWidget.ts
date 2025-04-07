@@ -215,13 +215,13 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     ctx.fillStyle = this.background_color;
     ctx.lineWidth = 1;
     ctx.strokeStyle = this.outline_color;
-    ctx.fillRect(margin, gradientY, width - margin * 2, gradientHeight);
-    ctx.strokeRect(margin, gradientY, width - margin * 2, gradientHeight);
+    ctx.fillRect(this.gradientRect.x, this.gradientRect.y, this.gradientRect.width, this.gradientRect.height);
+    ctx.strokeRect(this.gradientRect.x, this.gradientRect.y, this.gradientRect.width, this.gradientRect.height);
     
     // Draw stop area with light grey background
     ctx.fillStyle = "#e0e0e0";
-    ctx.fillRect(margin, stopAreaY, width - margin * 2, stopAreaHeight);
-    ctx.strokeRect(margin, stopAreaY, width - margin * 2, stopAreaHeight);
+    ctx.fillRect(this.stopAreaRect.x, this.stopAreaRect.y, this.stopAreaRect.width, this.stopAreaRect.height);
+    ctx.strokeRect(this.stopAreaRect.x, this.stopAreaRect.y, this.stopAreaRect.width, this.stopAreaRect.height);
     
     // Draw the actual gradient
     if (this.value.length >= 2) {
@@ -229,7 +229,12 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       const sortedStops = [...this.value].sort((a, b) => a.position - b.position);
       
       // Create gradient
-      const gradient = ctx.createLinearGradient(margin, 0, width - margin, 0);
+      const gradient = ctx.createLinearGradient(
+        this.gradientRect.x, 
+        this.gradientRect.y, 
+        this.gradientRect.x + this.gradientRect.width, 
+        this.gradientRect.y
+      );
       
       // Add color stops
       for (const stop of sortedStops) {
@@ -237,42 +242,40 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       }
       
       ctx.fillStyle = gradient;
-      ctx.fillRect(margin, gradientY, width - margin * 2, gradientHeight);
+      ctx.fillRect(this.gradientRect.x, this.gradientRect.y, this.gradientRect.width, this.gradientRect.height);
     }
     
-    // Draw handles/stops if not disabled
-    if (!this.disabled) {
-      // Draw track in the middle of the stop area
-      const trackY = stopAreaY + stopAreaHeight / 2;
+    // Draw track in the middle of the stop area
+    const trackY = this.stopAreaRect.y + this.stopAreaRect.height / 2;
+    
+    // Draw stop markers
+    for (let i = 0; i < this.value.length; i++) {
+      const stop = this.value[i];
+      const isSelected = i === this.selectedStopIndex;
       
-      // Draw stop markers
-      for (let i = 0; i < this.value.length; i++) {
-        const stop = this.value[i];
-        const isSelected = i === this.selectedStopIndex;
-        
-        // Calculate stop position
-        const stopX = margin + stop.position * (width - margin * 2);
-        const stopY = trackY;
-        
-        // Draw stop marker
-        ctx.beginPath();
-        ctx.fillStyle = stop.color;
-        
-        // Draw diamond-shaped marker
-        ctx.moveTo(stopX, stopY - halfStopSize);
-        ctx.lineTo(stopX + halfStopSize, stopY);
-        ctx.lineTo(stopX, stopY + halfStopSize);
-        ctx.lineTo(stopX - halfStopSize, stopY);
-        
-        ctx.closePath();
-        ctx.fill();
-        
-        // Draw border - yellow for selected, black otherwise
-        ctx.lineWidth = isSelected ? 2 : 1;
-        ctx.strokeStyle = isSelected ? "#ff9900" : "#000000";
-        ctx.stroke();
-      }
+      // Calculate stop position
+      const stopX = this.stopAreaRect.x + stop.position * this.stopAreaRect.width;
+      const stopY = trackY;
+      
+      // Draw stop marker
+      ctx.beginPath();
+      ctx.fillStyle = stop.color;
+      
+      // Draw diamond-shaped marker
+      ctx.moveTo(stopX, stopY - halfStopSize);
+      ctx.lineTo(stopX + halfStopSize, stopY);
+      ctx.lineTo(stopX, stopY + halfStopSize);
+      ctx.lineTo(stopX - halfStopSize, stopY);
+      
+      ctx.closePath();
+      ctx.fill();
+      
+      // Draw border - yellow for selected, black otherwise
+      ctx.lineWidth = isSelected ? 2 : 1;
+      ctx.strokeStyle = isSelected ? "#ff9900" : "#000000";
+      ctx.stroke();
     }
+    
     
     // Draw label
     if (show_text) {
@@ -295,6 +298,8 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
    * Checks if a point is over a gradient stop
    */
   private getStopAtPosition(x: number, y: number): number {
+    console.log("getStopAtPosition");
+    
     const stopSize = 14;
     const hitArea = stopSize * 1.5; // Make the hit area larger than the visual size
       
