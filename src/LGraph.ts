@@ -919,7 +919,7 @@ export class LGraph implements LinkNetwork, Serialisable<SerialisableGraph> {
   /**
    * Returns a node by its id.
    */
-  getNodeById(id: NodeId): LGraphNode | null {
+  getNodeById(id: NodeId | null | undefined): LGraphNode | null {
     return id != null
       ? this._nodes_by_id[id]
       : null
@@ -1324,6 +1324,8 @@ export class LGraph implements LinkNetwork, Serialisable<SerialisableGraph> {
     }
 
     reroutes.delete(id)
+    // This does not belong here; it should be handled by the caller, or run by a remove-many API.
+    // https://github.com/Comfy-Org/litegraph.js/issues/898
     this.setDirtyCanvas(false, true)
   }
 
@@ -1565,6 +1567,8 @@ export class LGraph implements LinkNetwork, Serialisable<SerialisableGraph> {
     this.updateExecutionOrder()
 
     this.extra = data.extra || {}
+    // Ensure auto-generated serialisation data is removed from extra
+    delete this.extra.linkExtensions
 
     this.onConfigure?.(data)
     this._version++
