@@ -143,6 +143,9 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   declare value: IWidgetGradientStop[];
   declare options: IWidgetGradientOptions;
   
+  // Add computed height property
+  computedHeight?: number;
+
   // State variable - only one needed for selection and dragging
   private selectedStopIndex: number = -1;
   
@@ -150,6 +153,34 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   private gradientRect: { x: number, y: number, width: number, height: number } = { x: 0, y: 0, width: 0, height: 0 };
   private stopAreaRect: { x: number, y: number, width: number, height: number } = { x: 0, y: 0, width: 0, height: 0 };
   
+  /**
+   * Compute the layout size of the widget.
+   * @returns The layout size of the widget.
+   */
+  computeLayoutSize(): {
+    minHeight: number
+    maxHeight?: number
+    minWidth: number
+    maxWidth?: number
+  } {
+    // Calculate minimum height based on our fixed dimensions
+    const minHeight = 20 + // label
+                     5 +  // first spacing
+                     30 + // gradient
+                     5 +  // second spacing
+                     20;  // stop area
+    return {
+      minHeight,
+      minWidth: 20,
+      maxHeight: 1_000_000,
+      maxWidth: 1_000_000,
+    }
+  }
+
+  get height(): number {
+    return this.computedHeight || super.height;
+  }
+
   constructor(widget: IGradientWidget) {
     super(widget);
     this.type = "gradient";
@@ -190,11 +221,14 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     const stopSize = 14;
     const halfStopSize = stopSize / 2;
     
-    // Constants for layout
-    const gradientHeight = height * 0.5;
-    const stopAreaHeight = height * 0.3;
-    const gradientY = y + height * 0.1;
-    const stopAreaY = gradientY + gradientHeight + 5;
+    // Constants for layout - using fixed sizes instead of percentages
+    const labelHeight = 12; // Fixed height for label
+    const gradientHeight = 26; // Fixed height for gradient
+    const stopAreaHeight = 10; // Fixed height for stop area
+    const spacing = 5; // Spacing between elements
+    
+    const gradientY = y + labelHeight + spacing;
+    const stopAreaY = gradientY + gradientHeight + spacing;
     
     // Store areas for interaction
     this.gradientRect = {
@@ -219,9 +253,9 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     ctx.strokeRect(this.gradientRect.x, this.gradientRect.y, this.gradientRect.width, this.gradientRect.height);
     
     // Draw stop area with light grey background
-    ctx.fillStyle = "#e0e0e0";
-    ctx.fillRect(this.stopAreaRect.x, this.stopAreaRect.y, this.stopAreaRect.width, this.stopAreaRect.height);
-    ctx.strokeRect(this.stopAreaRect.x, this.stopAreaRect.y, this.stopAreaRect.width, this.stopAreaRect.height);
+    // ctx.fillStyle = "#e0e0e0";
+    // ctx.fillRect(this.stopAreaRect.x, this.stopAreaRect.y, this.stopAreaRect.width, this.stopAreaRect.height);
+    // ctx.strokeRect(this.stopAreaRect.x, this.stopAreaRect.y, this.stopAreaRect.width, this.stopAreaRect.height);
     
     // Draw the actual gradient
     if (this.value.length >= 2) {
@@ -274,6 +308,8 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       ctx.lineWidth = isSelected ? 2 : 1;
       ctx.strokeStyle = isSelected ? "#ff9900" : "#000000";
       ctx.stroke();
+
+
     }
     
     
@@ -283,7 +319,7 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       ctx.textAlign = "left";
       const label = this.label || this.name;
       if (label != null) {
-        ctx.fillText(label, margin, y + 10 + height * 0.08);
+        ctx.fillText(label, margin, y + 10 );
       }
     }
     
