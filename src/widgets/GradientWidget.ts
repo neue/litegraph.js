@@ -448,6 +448,9 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
         // Update both internal and global selection
         this.selectedStopIndex = newStopIndex;
         activeStopIndex = newStopIndex;
+        
+        // Immediately open the color picker for the new stop
+        this.openColorPicker(newStopIndex, options);
       }
       
       return true;
