@@ -164,15 +164,15 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     maxWidth?: number
   } {
     // Calculate minimum height based on our fixed dimensions
-    const minHeight = 20 + // label
+    const totalHeight = 12 + // label
                      5 +  // first spacing
-                     30 + // gradient
+                     26 + // gradient
                      5 +  // second spacing
-                     20;  // stop area
+                     10;  // stop area
     return {
-      minHeight,
+      minHeight: totalHeight,
+      maxHeight: totalHeight, // Set max height equal to min height to keep it fixed
       minWidth: 20,
-      maxHeight: 1_000_000,
       maxWidth: 1_000_000,
     }
   }
