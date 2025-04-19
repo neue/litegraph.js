@@ -555,7 +555,7 @@ export class LGraphCanvas implements ConnectionColorContext {
   onClear?: () => void
   /** called after moving a node @deprecated Does not handle multi-node move, and can return the wrong node. */
   onNodeMoved?: (node_dragged: LGraphNode | undefined) => void
-  /** called if the selection changes */
+  /** @deprecated Called with the deprecated {@link selected_nodes} when the selection changes. Replacement not yet impl. */
   onSelectionChange?: (selected: Dictionary<Positionable>) => void
   /** called when rendering a tooltip */
   onDrawLinkTooltip?: (
@@ -576,11 +576,6 @@ export class LGraphCanvas implements ConnectionColorContext {
   onNodeSelected?: (node: LGraphNode) => void
   onNodeDeselected?: (node: LGraphNode) => void
   onRender?: (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => void
-  /** Implement this function to allow conversion of widget types to input types, e.g. number -> INT or FLOAT for widget link validation checks */
-  getWidgetLinkType?: (
-    widget: IWidget,
-    node: LGraphNode,
-  ) => string | null | undefined
 
   /**
    * Creates a new instance of LGraphCanvas.
@@ -1877,10 +1872,31 @@ export class LGraphCanvas implements ConnectionColorContext {
       // Right / aux button
 
       // Sticky select - won't remove single nodes
-      if (node) this.processSelect(node, e, true)
+      if (node) {
+        this.processSelect(node, e, true)
+      } else if (this.links_render_mode !== LinkRenderType.HIDDEN_LINK) {
+        // Reroutes
+        const reroute = graph.getRerouteOnPos(e.canvasX, e.canvasY)
+        if (reroute) {
+          if (e.altKey) {
+            pointer.onClick = (upEvent) => {
+              if (upEvent.altKey) {
+                // Ensure deselected
+                if (reroute.selected) {
+                  this.deselect(reroute)
+                  this.onSelectionChange?.(this.selected_nodes)
+                }
+                reroute.remove()
+              }
+            }
+          } else {
+            this.processSelect(reroute, e, true)
+          }
+        }
+      }
 
       // Show context menu for the node or group under the pointer
-      this.processContextMenu(node, e)
+      pointer.onClick ??= () => this.processContextMenu(node, e)
     }
 
     this.last_mouse = [x, y]
@@ -2601,20 +2617,6 @@ export class LGraphCanvas implements ConnectionColorContext {
               // No link, or none of the dragged links may be dropped here
             } else if (linkConnector.state.connectingTo === "input") {
               if (inputId === -1 && outputId === -1) {
-                // Allow support for linking to widgets, handled externally to LiteGraph
-                if (this.getWidgetLinkType && overWidget) {
-                  const widgetLinkType = this.getWidgetLinkType(overWidget, node)
-                  if (
-                    widgetLinkType &&
-                    LiteGraph.isValidConnection(linkConnector.renderLinks[0]?.fromSlot.type, widgetLinkType) &&
-                    firstLink.node.isValidWidgetLink?.(firstLink.fromSlotIndex, node, overWidget) !== false
-                  ) {
-                    const { pos: [nodeX, nodeY] } = node
-                    highlightPos = [nodeX + 10, nodeY + 10 + overWidget.y]
-                    linkConnector.overWidget = overWidget
-                    linkConnector.overWidgetType = widgetLinkType
-                  }
-                }
                 // Node background / title under the pointer
                 if (!linkConnector.overWidget) {
                   const result = node.findInputByType(firstLink.fromSlot.type)
@@ -3359,16 +3361,28 @@ export class LGraphCanvas implements ConnectionColorContext {
 
     this.onNodeDeselected?.(item)
 
+    // Should be moved to top of function, and throw if null
+    const { graph } = this
+    if (!graph) return
+
     // Clear link highlight
     if (item.inputs) {
       for (const input of item.inputs) {
         if (input.link == null) continue
+
+        const node = LLink.getOriginNode(graph, input.link)
+        if (node && this.selectedItems.has(node)) continue
+
         delete this.highlighted_links[input.link]
       }
     }
     if (item.outputs) {
       for (const id of item.outputs.flatMap(x => x.links)) {
         if (id == null) continue
+
+        const node = LLink.getTargetNode(graph, id)
+        if (node && this.selectedItems.has(node)) continue
+
         delete this.highlighted_links[id]
       }
     }
@@ -4281,11 +4295,7 @@ export class LGraphCanvas implements ConnectionColorContext {
 
     // render inputs and outputs
     if (!node.collapsed) {
-      const slotsBounds = node.layoutSlots()
-      const widgetStartY = slotsBounds ? slotsBounds[1] + slotsBounds[3] : 0
-      node.layoutWidgets({ widgetStartY })
-      node.layoutWidgetInputSlots()
-
+      node.layout()
       node.drawSlots(ctx, {
         fromSlot: this.linkConnector.renderLinks[0]?.fromSlot,
         colorContext: this,
@@ -4296,7 +4306,7 @@ export class LGraphCanvas implements ConnectionColorContext {
       ctx.textAlign = "left"
       ctx.globalAlpha = 1
 
-      this.drawNodeWidgets(node, widgetStartY, ctx)
+      this.drawNodeWidgets(node, null, ctx)
     } else if (this.render_collapsed_slots) {
       node.drawCollapsedSlots(ctx)
     }
@@ -4362,15 +4372,15 @@ export class LGraphCanvas implements ConnectionColorContext {
     // Hard-coded tooltip limit
     text = text.substring(0, 30)
 
-    ctx.font = "14px Courier New"
+    ctx.font = "14px Fira"
     const info = ctx.measureText(text)
     const w = info.width + 20
     const h = 24
-    ctx.shadowColor = "black"
-    ctx.shadowOffsetX = 2
+    ctx.shadowColor = "rgba(0,0,0,0.5)"
+    ctx.shadowOffsetX = 0
     ctx.shadowOffsetY = 2
-    ctx.shadowBlur = 3
-    ctx.fillStyle = "#454"
+    ctx.shadowBlur = 15
+    ctx.fillStyle = "#1A1A1A"
     ctx.beginPath()
     ctx.roundRect(pos[0] - w * 0.5, pos[1] - 15 - h, w, h, [3])
     ctx.moveTo(pos[0] - 10, pos[1] - 15)
@@ -4379,7 +4389,7 @@ export class LGraphCanvas implements ConnectionColorContext {
     ctx.fill()
     ctx.shadowColor = "transparent"
     ctx.textAlign = "center"
-    ctx.fillStyle = "#CEC"
+    ctx.fillStyle = "#D9D9D9"
     ctx.fillText(text, pos[0], pos[1] - 15 - h * 0.3)
   }
 
@@ -5201,15 +5211,10 @@ export class LGraphCanvas implements ConnectionColorContext {
    */
   drawNodeWidgets(
     node: LGraphNode,
-    posY: number,
+    _posY: null,
     ctx: CanvasRenderingContext2D,
   ): void {
-    const { linkConnector } = this
-
     node.drawWidgets(ctx, {
-      colorContext: this,
-      linkOverWidget: linkConnector.overWidget,
-      linkOverWidgetType: linkConnector.overWidgetType,
       lowQuality: this.low_quality,
       editorAlpha: this.editor_alpha,
     })
@@ -7069,8 +7074,9 @@ export class LGraphCanvas implements ConnectionColorContext {
         if (node.getSlotMenuOptions) {
           menu_info = node.getSlotMenuOptions(slot)
         } else {
-          if (slot?.output?.links?.length)
+          if (slot.output?.links?.length || slot.input?.link != null) {
             menu_info.push({ content: "Disconnect Links", slot })
+          }
 
           const _slot = slot.input || slot.output
           if (!_slot) throw new TypeError("Both in put and output slots were null when processing context menu.")
