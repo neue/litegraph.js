@@ -208,7 +208,12 @@ describe("LinkConnector Integration", () => {
       const canvasY = disconnectedNode.pos[1] + 16
       const dropEvent = { canvasX, canvasY } as any
 
+      // Drop links, ensure reset has not been run
       connector.dropLinks(graph, dropEvent)
+      expect(connector.renderLinks.length).toBe(1)
+
+      // Test reset
+      connector.reset()
       expect(connector.renderLinks.length).toBe(0)
       expect(connector.inputLinks.length).toBe(0)
 
@@ -239,6 +244,7 @@ describe("LinkConnector Integration", () => {
       const dropEvent = { canvasX, canvasY } as any
 
       connector.dropLinks(graph, dropEvent)
+      connector.reset()
       expect(connector.renderLinks.length).toBe(0)
       expect(connector.inputLinks.length).toBe(0)
 
@@ -300,6 +306,7 @@ describe("LinkConnector Integration", () => {
 
       connector.moveInputLink(graph, hasInputNode.inputs[0])
       connector.dropLinks(graph, atOutputNodeEvent)
+      connector.reset()
 
       const outputNodes = hasOutputNode.getOutputNodes(0)
       expect(outputNodes).toEqual([hasInputNode, hasInputNode2])
@@ -319,6 +326,7 @@ describe("LinkConnector Integration", () => {
 
       connector.moveInputLink(graph, hasInputNode.inputs[0])
       connector.dropLinks(graph, atHasOutputNode)
+      connector.reset()
 
       const outputNodes = hasOutputNode.getOutputNodes(0)
       expect(outputNodes).toEqual(originalOutputNodes)
@@ -351,6 +359,7 @@ describe("LinkConnector Integration", () => {
       const dropEvent = { canvasX, canvasY } as any
 
       connector.dropLinks(graph, dropEvent)
+      connector.reset()
       expect(connector.renderLinks.length).toBe(0)
       expect(connector.outputLinks.length).toBe(0)
 
@@ -395,6 +404,7 @@ describe("LinkConnector Integration", () => {
       const dropEvent = { canvasX, canvasY } as any
 
       connector.dropLinks(graph, dropEvent)
+      connector.reset()
       expect(connector.renderLinks.length).toBe(0)
       expect(connector.outputLinks.length).toBe(0)
 
@@ -459,6 +469,7 @@ describe("LinkConnector Integration", () => {
 
       connector.moveOutputLink(graph, manyOutputsNode.outputs[0])
       connector.dropLinks(graph, floatingRerouteEvent)
+      connector.reset()
 
       expect(manyOutputsNode.outputs[0].links).toEqual([])
       expect(floatingReroute.linkIds.size).toBe(4)
@@ -488,7 +499,11 @@ describe("LinkConnector Integration", () => {
       expect(connector.isRerouteValidDrop(reroute7)).toBe(false)
       expect(connector.isRerouteValidDrop(reroute10)).toBe(false)
       expect(connector.isRerouteValidDrop(reroute13)).toBe(false)
+
+      // Prevent link disconnect when dropped on canvas (just for this test)
+      connector.events.addEventListener("dropped-on-canvas", e => e.preventDefault(), { once: true })
       connector.dropLinks(graph, reroute7Event)
+      connector.reset()
 
       const reroutesAfter = toSortedRerouteChain(manyOutputsNode.outputs[0].links!)
       expect(reroutesAfter).toEqual(reroutesBefore)
@@ -507,6 +522,7 @@ describe("LinkConnector Integration", () => {
 
       connector.moveOutputLink(graph, hasOutputNode.outputs[0])
       connector.dropLinks(graph, atInputNodeEvent)
+      connector.reset()
 
       expect(hasOutputNode.getOutputNodes(0)).toEqual([hasInputNode])
       expect(hasInputNode.getOutputNodes(0)).toEqual([graph.getNodeById(3)])
@@ -530,6 +546,7 @@ describe("LinkConnector Integration", () => {
 
       connector.moveOutputLink(graph, hasOutputNode.outputs[0])
       connector.dropLinks(graph, atInputNodeOutSlot)
+      connector.reset()
 
       expect(hasOutputNode.getOutputNodes(0)).toEqual([hasInputNode])
       expect(hasInputNode.getOutputNodes(0)).toEqual([graph.getNodeById(3)])
@@ -552,6 +569,7 @@ describe("LinkConnector Integration", () => {
 
       connector.dragFromReroute(graph, floatingReroute)
       connector.dropLinks(graph, { canvasX, canvasY } as any)
+      connector.reset()
 
       expect(graph.floatingLinks.size).toBe(0)
       expect(floatingReroute.floating).toBeUndefined()
@@ -564,6 +582,7 @@ describe("LinkConnector Integration", () => {
 
       connector.dragFromReroute(graph, floatingReroute)
       connector.dropLinks(graph, { canvasX, canvasY } as any)
+      connector.reset()
 
       expect(graph.floatingLinks.size).toBe(0)
       expect(floatingReroute.floating).toBeUndefined()
@@ -585,6 +604,7 @@ describe("LinkConnector Integration", () => {
       connector.moveInputLink(graph, fromFloatingInput)
       const dropEvent = mockedInputDropEvent(hasInputNode, 0)
       connector.dropLinks(graph, dropEvent)
+      connector.reset()
 
       expect(fromFloatingInput.link).toBeNull()
       expect(fromFloatingInput._floatingLinks?.size).toBe(0)
@@ -601,6 +621,7 @@ describe("LinkConnector Integration", () => {
 
       connector.dragFromReroute(graph, floatingReroute)
       connector.dropLinks(graph, targetDropEvent)
+      connector.reset()
 
       // Link should have been moved to the floating reroute, and no floating links should remain
       expect(rerouteWithTwoLinks.floating).toBeUndefined()
@@ -613,6 +634,7 @@ describe("LinkConnector Integration", () => {
       // Move the link again
       connector.dragFromReroute(graph, rerouteWithTwoLinks)
       connector.dropLinks(graph, targetDropEvent)
+      connector.reset()
 
       // Everything should be back the way it was when we started
       expect(rerouteWithTwoLinks.floating).toBeUndefined()
@@ -633,6 +655,7 @@ describe("LinkConnector Integration", () => {
     const manyOutputsNode = graph.getNodeById(4)!
     const dropEvent = { canvasX: manyOutputsNode.pos[0], canvasY: manyOutputsNode.pos[1] } as any
     connector.dropLinks(graph, dropEvent)
+    connector.reset()
 
     const output = manyOutputsNode.outputs[0]
     expect(output.links!.length).toBe(6)
@@ -647,6 +670,7 @@ describe("LinkConnector Integration", () => {
     dropEvent.canvasX = disconnectedNode.pos[0]
     dropEvent.canvasY = disconnectedNode.pos[1]
     connector.dropLinks(graph, dropEvent)
+    connector.reset()
 
     const newOutput = disconnectedNode.outputs[0]
     expect(newOutput.links!.length).toBe(6)
@@ -767,6 +791,7 @@ describe("LinkConnector Integration", () => {
 
     connector.dragNewFromOutput(graph, disconnectedNode, disconnectedNode.outputs[0])
     connector.dropLinks(graph, dropEvent)
+    connector.reset()
 
     expect(disconnectedNode.outputs[0].links).toEqual(nextLinkIds)
     expect([...targetReroute.linkIds.values()]).toEqual(nextLinkIds)
@@ -884,6 +909,7 @@ describe("LinkConnector Integration", () => {
 
     const dropEvent = { canvasX: toReroute.pos[0], canvasY: toReroute.pos[1] } as any
     connector.dropLinks(graph, dropEvent)
+    connector.reset()
 
     const newParentChain = LLink.getReroutes(graph, toReroute)
     for (const rerouteId of shouldBeRemoved) {
@@ -951,6 +977,7 @@ describe("LinkConnector Integration", () => {
 
     connector.dragFromReroute(graph, fromReroute)
     connector.dropLinks(graph, dropEvent)
+    connector.reset()
 
     expect(listener).not.toHaveBeenCalled()
     validateIntegrityNoChanges()
@@ -981,6 +1008,7 @@ describe("LinkConnector Integration", () => {
 
     connector.dragNewFromInput(graph, node, input)
     connector.dropLinks(graph, dropEvent)
+    connector.reset()
 
     expect(listener).not.toHaveBeenCalled()
     validateIntegrityNoChanges()
@@ -1004,6 +1032,7 @@ describe("LinkConnector Integration", () => {
 
     connector.dragFromReroute(graph, reroute)
     connector.dropLinks(graph, dropEvent)
+    connector.reset()
 
     expect(listener).not.toHaveBeenCalled()
     validateIntegrityNoChanges()
@@ -1028,6 +1057,7 @@ describe("LinkConnector Integration", () => {
 
     connector.dragFromReroute(graph, reroute)
     connector.dropLinks(graph, dropOnInputEvent)
+    connector.reset()
 
     expect(listener).not.toHaveBeenCalled()
     validateIntegrityNoChanges()

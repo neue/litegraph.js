@@ -1,6 +1,6 @@
 import { describe, expect } from "vitest"
 
-import { LGraphNode } from "@/litegraph"
+import { LGraphNode, LiteGraph } from "@/litegraph"
 import { LGraph } from "@/litegraph"
 import { NodeInputSlot, NodeOutputSlot } from "@/NodeSlot"
 
@@ -312,6 +312,144 @@ describe("LGraphNode", () => {
       const slot = node.getSlotOnPos(inputPos)
       expect(slot).toBeDefined()
       expect(slot?.name).toBe("Input1")
+    })
+  })
+
+  describe("LGraphNode slot positioning", () => {
+    test("should correctly position slots with absolute coordinates", () => {
+      // Setup
+      const node = new LGraphNode("test")
+      node.pos = [100, 100]
+
+      // Add input/output with absolute positions
+      node.addInput("abs-input", "number")
+      node.inputs[0].pos = [10, 20]
+
+      node.addOutput("abs-output", "number")
+      node.outputs[0].pos = [50, 30]
+
+      // Test
+      const inputPos = node.getInputPos(0)
+      const outputPos = node.getOutputPos(0)
+
+      // Absolute positions should be relative to node position
+      expect(inputPos).toEqual([110, 120]) // node.pos + slot.pos
+      expect(outputPos).toEqual([150, 130]) // node.pos + slot.pos
+    })
+
+    test("should correctly position default vertical slots", () => {
+      // Setup
+      const node = new LGraphNode("test")
+      node.pos = [100, 100]
+
+      // Add multiple inputs/outputs without absolute positions
+      node.addInput("input1", "number")
+      node.addInput("input2", "number")
+      node.addOutput("output1", "number")
+      node.addOutput("output2", "number")
+
+      // Calculate expected positions
+      const slotOffset = LiteGraph.NODE_SLOT_HEIGHT * 0.5
+      const slotSpacing = LiteGraph.NODE_SLOT_HEIGHT
+      const nodeWidth = node.size[0]
+
+      // Test input positions
+      expect(node.getInputPos(0)).toEqual([
+        100 + slotOffset,
+        100 + (0 + 0.7) * slotSpacing,
+      ])
+      expect(node.getInputPos(1)).toEqual([
+        100 + slotOffset,
+        100 + (1 + 0.7) * slotSpacing,
+      ])
+
+      // Test output positions
+      expect(node.getOutputPos(0)).toEqual([
+        100 + nodeWidth + 1 - slotOffset,
+        100 + (0 + 0.7) * slotSpacing,
+      ])
+      expect(node.getOutputPos(1)).toEqual([
+        100 + nodeWidth + 1 - slotOffset,
+        100 + (1 + 0.7) * slotSpacing,
+      ])
+    })
+
+    test("should skip absolute positioned slots when calculating vertical positions", () => {
+      // Setup
+      const node = new LGraphNode("test")
+      node.pos = [100, 100]
+
+      // Add mix of absolute and default positioned slots
+      node.addInput("abs-input", "number")
+      node.inputs[0].pos = [10, 20]
+      node.addInput("default-input1", "number")
+      node.addInput("default-input2", "number")
+
+      const slotOffset = LiteGraph.NODE_SLOT_HEIGHT * 0.5
+      const slotSpacing = LiteGraph.NODE_SLOT_HEIGHT
+
+      // Test: default positioned slots should be consecutive, ignoring absolute positioned ones
+      expect(node.getInputPos(1)).toEqual([
+        100 + slotOffset,
+        100 + (0 + 0.7) * slotSpacing, // First default slot starts at index 0
+      ])
+      expect(node.getInputPos(2)).toEqual([
+        100 + slotOffset,
+        100 + (1 + 0.7) * slotSpacing, // Second default slot at index 1
+      ])
+    })
+  })
+
+  describe("widget serialization", () => {
+    test("should only serialize widgets with serialize flag not set to false", () => {
+      const node = new LGraphNode("TestNode")
+      node.serialize_widgets = true
+
+      // Add widgets with different serialization settings
+      node.addWidget("number", "serializable1", 1, null)
+      node.addWidget("number", "serializable2", 2, null)
+      node.addWidget("number", "non-serializable", 3, null)
+      expect(node.widgets?.length).toBe(3)
+
+      // Set serialize flag to false for the last widget
+      node.widgets![2].serialize = false
+
+      // Set some widget values
+      node.widgets![0].value = 10
+      node.widgets![1].value = 20
+      node.widgets![2].value = 30
+
+      // Serialize the node
+      const serialized = node.serialize()
+
+      // Check that only serializable widgets' values are included
+      expect(serialized.widgets_values).toEqual([10, 20])
+      expect(serialized.widgets_values).toHaveLength(2)
+    })
+
+    test("should only configure widgets with serialize flag not set to false", () => {
+      const node = new LGraphNode("TestNode")
+      node.serialize_widgets = true
+
+      node.addWidget("number", "non-serializable", 1, null)
+      node.addWidget("number", "serializable1", 2, null)
+      expect(node.widgets?.length).toBe(2)
+
+      node.widgets![0].serialize = false
+      node.configure({
+        id: 1,
+        type: "TestNode",
+        pos: [100, 100],
+        size: [100, 100],
+        flags: {},
+        properties: {},
+        order: 0,
+        mode: 0,
+        widgets_values: [100],
+      })
+
+      expect(node.widgets![0].value).toBe(1)
+      expect(node.widgets![1].value).toBe(100)
     })
   })
 })
