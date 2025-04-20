@@ -137,13 +137,13 @@ export class ColorWidget extends BaseWidget implements IColorWidget {
     ctx.textAlign = "left"
     ctx.strokeStyle = this.outline_color
     ctx.fillStyle = this.background_color
-    ctx.beginPath()
+    // ctx.beginPath()
 
-    if (show_text)
-      ctx.roundRect(margin, y, width - margin * 2, height, [height * 0.5])
-    else
-      ctx.rect(margin, y, width - margin * 2, height)
-    ctx.fill()
+    // if (show_text)
+    //   ctx.roundRect(margin, y, width - margin * 2, height, [height * 0.5])
+    // else
+    //   ctx.rect(margin, y, width - margin * 2, height)
+    // ctx.fill()
 
     if (show_text) {
       if (!this.disabled) ctx.stroke()

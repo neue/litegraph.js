@@ -25,7 +25,8 @@ export class BooleanWidget extends BaseWidget implements IBooleanWidget {
     const { height } = this
 
     ctx.textAlign = "left"
-    ctx.strokeStyle = this.outline_color
+    // ctx.strokeStyle = this.outline_color
+    ctx.strokeStyle = this.background_color
     ctx.fillStyle = this.background_color
     ctx.beginPath()
 
