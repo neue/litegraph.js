@@ -284,12 +284,41 @@ export interface IWidgetGradientStop {
   color: string;    // Color in hex format
 }
 
+export type MixingAlgorithm = 'RGB' | 'Oklab' | 'CIELAB';
+
 export interface IWidgetGradientOptions extends IWidgetOptions<IWidgetGradientStop[]> {
   min_stops?: number;         // Minimum number of stops (default: 2)
+  default_algorithm?: MixingAlgorithm; // Default mixing algorithm
 }
 
 export interface IGradientWidget extends IBaseWidget {
   type: "gradient";
   value: IWidgetGradientStop[];
   options: IWidgetGradientOptions;
+  
+  /**
+   * Get the current mixing algorithm used for gradient interpolation
+   * @returns The current mixing algorithm (RGB, Oklab, or CIELAB)
+   */
+  getMixingAlgorithm?(): MixingAlgorithm;
+  
+  /**
+   * Set the mixing algorithm for gradient interpolation
+   * @param algorithm The algorithm to use (RGB, Oklab, or CIELAB)
+   * @param options Optional parameters including node reference for notification
+   */
+  setMixingAlgorithm?(algorithm: MixingAlgorithm, options?: any): void;
+  
+  /**
+   * Generate a CSS gradient string for the current gradient with current mixing algorithm
+   * @returns CSS linear-gradient string that can be used in DOM elements
+   */
+  generateGradientCSS?(): string;
+  
+  /**
+   * Compute a color at a specific position using the current mixing algorithm
+   * @param position Position in the gradient from 0 to 1
+   * @returns Hex color string at the specified position
+   */
+  computeColorAt?(position: number): string;
 }

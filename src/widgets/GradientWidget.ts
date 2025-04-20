@@ -1,9 +1,15 @@
 import type { LGraphCanvas } from "@/LGraphCanvas"
 import type { LGraphNode } from "@/LGraphNode"
 import type { CanvasMouseEvent } from "@/types/events"
-import type { IGradientWidget, IWidgetGradientOptions, IWidgetGradientStop } from "@/types/widgets"
+import type { IGradientWidget, IWidgetGradientOptions, IWidgetGradientStop, MixingAlgorithm } from "@/types/widgets"
 
 import { BaseWidget, type DrawWidgetOptions } from "./BaseWidget"
+
+// Custom interface for nodes that want to handle gradient widget callbacks
+interface IGradientAwareNode extends LGraphNode {
+  onGradientAlgorithmChanged?: (algorithm: MixingAlgorithm, widget: GradientWidget) => void;
+  onGradientWidgetChanged?: (widget: GradientWidget, options: any) => void;
+}
 
 // Global singleton color input element for stop color editing
 let globalColorInput: HTMLInputElement | null = null;
@@ -17,8 +23,7 @@ let currentOptions: {
 let animationFrameId: number | null = null;
 let pendingUpdate = false;
 
-// Mixing algorithm types
-type MixingAlgorithm = 'RGB' | 'Oklab' | 'CIELAB';
+// Mixing algorithm constants
 const MIXING_ALGORITHMS: MixingAlgorithm[] = ['RGB', 'Oklab', 'CIELAB'];
 
 // Create or get the global color input
@@ -190,6 +195,11 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   constructor(widget: IGradientWidget) {
     super(widget);
     this.type = "gradient";
+    
+    // Set the initial mixing algorithm if provided in options
+    if (widget.options?.default_algorithm && MIXING_ALGORITHMS.includes(widget.options.default_algorithm)) {
+      this.currentMixingAlgorithm = widget.options.default_algorithm;
+    }
     
     // Ensure we have at least two stops by default
     if (!widget.value || widget.value.length < 2) {
@@ -461,6 +471,13 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       
       // Redraw
       node.setDirtyCanvas(true, true);
+      
+      // Trigger any node-specific handling for algorithm changes
+      const gradientNode = node as IGradientAwareNode;
+      if (gradientNode.onGradientAlgorithmChanged) {
+        gradientNode.onGradientAlgorithmChanged(this.currentMixingAlgorithm, this);
+      }
+      
       return true;
     }
     
@@ -842,4 +859,165 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
 
     return [r, g, b_];
   }
-} 
+
+  /**
+   * Get the current mixing algorithm
+   */
+  getMixingAlgorithm(): MixingAlgorithm {
+    return this.currentMixingAlgorithm;
+  }
+
+  /**
+   * Set the mixing algorithm
+   */
+  setMixingAlgorithm(algorithm: MixingAlgorithm, options?: {
+    e: CanvasMouseEvent;
+    node: LGraphNode;
+    canvas: LGraphCanvas;
+  }): void {
+    if (MIXING_ALGORITHMS.includes(algorithm)) {
+      this.currentMixingAlgorithm = algorithm;
+      
+      // Notify the node of the change
+      if (options?.node) {
+        // Trigger a setValue to notify any listeners
+        this.setValue([...this.value], options);
+        options.node.setDirtyCanvas(true, true);
+      }
+    }
+  }
+
+  /**
+   * Generate CSS gradient string based on current widget value and mixing algorithm
+   */
+  generateGradientCSS(): string {
+    // Sort stops by position
+    const sortedStops = [...this.value].sort((a, b) => a.position - b.position);
+    
+    // Build gradient string
+    const gradientStops = sortedStops.map(stop => 
+      `${stop.color} ${Math.round(stop.position * 100)}%`
+    ).join(', ');
+    
+    return `linear-gradient(to right, ${gradientStops})`;
+  }
+
+  /**
+   * Compute the color at a specific position using the current mixing algorithm
+   */
+  computeColorAt(position: number): string {
+    return this.getColorAtPosition(position);
+  }
+
+  /**
+   * Override setValue to include additional data for the node
+   */
+  override setValue(stops: IWidgetGradientStop[], options?: {
+    e: CanvasMouseEvent;
+    node: LGraphNode;
+    canvas: LGraphCanvas;
+  }): void {
+    // Sort stops by position
+    this.value = [...stops].sort((a, b) => a.position - b.position);
+    
+    // Call the node's onWidgetChanged method if it exists
+    if (options?.node) {
+      const gradientNode = options.node as IGradientAwareNode;
+      if (gradientNode.onGradientWidgetChanged) {
+        // Pass the gradient widget instance to allow accessing mixing algorithm
+        gradientNode.onGradientWidgetChanged(this, options);
+      }
+      
+      // Also trigger normal behavior
+      options.node.setDirtyCanvas(true, true);
+    }
+  }
+}
+
+/**
+ * Example of how to use the Gradient Widget in a Node:
+ * 
+ * ```typescript
+ * import { LGraphNode } from "@/LGraphNode";
+ * import { MixingAlgorithm } from "@/types/widgets";
+ * import { GradientWidget } from "@/widgets/GradientWidget";
+ * 
+ * class GradientNodeExample extends LGraphNode {
+ *   private gradientWidget: GradientWidget | null = null;
+ *   private currentAlgorithm: MixingAlgorithm = "RGB";
+ *   
+ *   constructor() {
+ *     super("GradientExample");
+ *     
+ *     // Add inputs/outputs
+ *     this.addOutput("output", "color");
+ *     
+ *     // Create initial gradient stops
+ *     const initialGradient = [
+ *       { position: 0, color: "#ff0000" },  // Red
+ *       { position: 0.5, color: "#00ff00" }, // Green
+ *       { position: 1, color: "#0000ff" }   // Blue
+ *     ];
+ *     
+ *     // Add the gradient widget
+ *     const gradientWidget = this.addWidget(
+ *       "gradient", 
+ *       "Gradient", 
+ *       initialGradient,
+ *       null, // No direct callback
+ *       { 
+ *         min_stops: 2, 
+ *         default_algorithm: "Oklab" // Start with Oklab algorithm
+ *       }
+ *     ) as GradientWidget;
+ *     
+ *     // Store reference to the widget
+ *     this.gradientWidget = gradientWidget;
+ *     
+ *     // Get initial algorithm
+ *     if (this.gradientWidget.getMixingAlgorithm) {
+ *       this.currentAlgorithm = this.gradientWidget.getMixingAlgorithm();
+ *     }
+ *   }
+ *   
+ *   // Handle algorithm changes
+ *   onGradientAlgorithmChanged(algorithm: MixingAlgorithm, widget: GradientWidget) {
+ *     console.log(`Algorithm changed to: ${algorithm}`);
+ *     this.currentAlgorithm = algorithm;
+ *     
+ *     // Regenerate output or update visual elements based on new algorithm
+ *     this.setDirtyCanvas(true, true);
+ *   }
+ *   
+ *   // Handle gradient changes
+ *   onGradientWidgetChanged(widget: GradientWidget, options: any) {
+ *     console.log("Gradient changed:", widget.value);
+ *     
+ *     // Regenerate output or update visual elements based on new gradient
+ *     this.setDirtyCanvas(true, true);
+ *   }
+ *   
+ *   // Get a color at a specific position with current algorithm
+ *   getColorAt(position: number): string {
+ *     if (this.gradientWidget && this.gradientWidget.computeColorAt) {
+ *       return this.gradientWidget.computeColorAt(position);
+ *     }
+ *     return "#000000";
+ *   }
+ *   
+ *   // Generate CSS gradient string for DOM elements
+ *   generateCSS(): string {
+ *     if (this.gradientWidget && this.gradientWidget.generateGradientCSS) {
+ *       return this.gradientWidget.generateGradientCSS();
+ *     }
+ *     return "linear-gradient(to right, #000000, #ffffff)";
+ *   }
+ *   
+ *   // In your execution code, you can use the current algorithm
+ *   onExecute() {
+ *     // Example: Output a color at position 0.75 using current algorithm
+ *     const colorAt75Percent = this.getColorAt(0.75);
+ *     this.setOutputData(0, colorAt75Percent);
+ *   }
+ * }
+ */ 
