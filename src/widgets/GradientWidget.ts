@@ -17,6 +17,10 @@ let currentOptions: {
 let animationFrameId: number | null = null;
 let pendingUpdate = false;
 
+// Mixing algorithm types
+type MixingAlgorithm = 'RGB' | 'Oklab' | 'CIELAB';
+const MIXING_ALGORITHMS: MixingAlgorithm[] = ['RGB', 'Oklab', 'CIELAB'];
+
 // Create or get the global color input
 function getGlobalColorInput(): HTMLInputElement {
   if (!globalColorInput) {
@@ -146,12 +150,14 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   // Add computed height property
   computedHeight?: number;
 
-  // State variable - only one needed for selection and dragging
+  // State variables
   private selectedStopIndex: number = -1;
+  private currentMixingAlgorithm: MixingAlgorithm = 'RGB';
   
   // Stored areas for interaction
   private gradientRect: { x: number, y: number, width: number, height: number } = { x: 0, y: 0, width: 0, height: 0 };
   private stopAreaRect: { x: number, y: number, width: number, height: number } = { x: 0, y: 0, width: 0, height: 0 };
+  private algorithmLabelRect: { x: number, y: number, width: number, height: number } = { x: 0, y: 0, width: 0, height: 0 };
   
   /**
    * Compute the layout size of the widget.
@@ -252,31 +258,43 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     ctx.fillRect(this.gradientRect.x, this.gradientRect.y, this.gradientRect.width, this.gradientRect.height);
     ctx.strokeRect(this.gradientRect.x, this.gradientRect.y, this.gradientRect.width, this.gradientRect.height);
     
-    // Draw stop area with light grey background
-    // ctx.fillStyle = "#e0e0e0";
-    // ctx.fillRect(this.stopAreaRect.x, this.stopAreaRect.y, this.stopAreaRect.width, this.stopAreaRect.height);
-    // ctx.strokeRect(this.stopAreaRect.x, this.stopAreaRect.y, this.stopAreaRect.width, this.stopAreaRect.height);
-    
     // Draw the actual gradient
     if (this.value.length >= 2) {
       // Sort stops by position
       const sortedStops = [...this.value].sort((a, b) => a.position - b.position);
       
-      // Create gradient
-      const gradient = ctx.createLinearGradient(
-        this.gradientRect.x, 
-        this.gradientRect.y, 
-        this.gradientRect.x + this.gradientRect.width, 
-        this.gradientRect.y
-      );
-      
-      // Add color stops
-      for (const stop of sortedStops) {
-        gradient.addColorStop(stop.position, stop.color);
+      if (this.currentMixingAlgorithm === 'RGB') {
+        // Use canvas gradient for RGB (more efficient)
+        const gradient = ctx.createLinearGradient(
+          this.gradientRect.x, 
+          this.gradientRect.y, 
+          this.gradientRect.x + this.gradientRect.width, 
+          this.gradientRect.y
+        );
+        
+        // Add color stops
+        for (const stop of sortedStops) {
+          gradient.addColorStop(stop.position, stop.color);
+        }
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(this.gradientRect.x, this.gradientRect.y, this.gradientRect.width, this.gradientRect.height);
+      } else {
+        // For Oklab and CIELAB, we manually sample colors at small intervals for accurate representation
+        const pixelWidth = 1; // Width of each sampled color
+        const numSamples = Math.floor(this.gradientRect.width / pixelWidth);
+        
+        for (let i = 0; i < numSamples; i++) {
+          const position = i / (numSamples - 1);
+          const x = this.gradientRect.x + i * pixelWidth;
+          
+          // Get color at this position using our advanced color mixing
+          const color = this.getColorAtPosition(position);
+          
+          ctx.fillStyle = color;
+          ctx.fillRect(x, this.gradientRect.y, pixelWidth + 1, this.gradientRect.height);
+        }
       }
-      
-      ctx.fillStyle = gradient;
-      ctx.fillRect(this.gradientRect.x, this.gradientRect.y, this.gradientRect.width, this.gradientRect.height);
     }
     
     // Draw track in the middle of the stop area
@@ -308,20 +326,33 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       ctx.lineWidth = isSelected ? 2 : 1;
       ctx.strokeStyle = isSelected ? "#ff9900" : "#000000";
       ctx.stroke();
-
-
     }
-    
     
     // Draw label
     if (show_text) {
-      ctx.fillStyle = this.text_color;
+      ctx.fillStyle = this.secondary_text_color;
       ctx.textAlign = "left";
       const label = this.label || this.name;
       if (label != null) {
         ctx.fillText(label, margin, y + 10 );
       }
     }
+
+    // Draw Mixing Algorithm
+    ctx.fillStyle = this.text_color;
+    ctx.textAlign = "right";
+    
+    // Store the algorithm label area for click detection
+    const labelText = this.currentMixingAlgorithm;
+    const labelMetrics = ctx.measureText(labelText);
+    this.algorithmLabelRect = {
+      x: width - margin - labelMetrics.width,
+      y: y,
+      width: labelMetrics.width,
+      height: 12
+    };
+    
+    ctx.fillText(labelText, width - margin, y + 10);
     
     // Restore original context attributes
     ctx.textAlign = originalTextAlign;
@@ -419,6 +450,20 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     const { e, node, canvas } = options;
     const x = e.canvasX - node.pos[0];
     const y = e.canvasY - node.pos[1];
+    
+    // Check if clicking on algorithm label
+    if (this.isOverAlgorithmLabel(x, y)) {
+      // Cycle to next algorithm
+      const currentIndex = MIXING_ALGORITHMS.indexOf(this.currentMixingAlgorithm);
+      this.currentMixingAlgorithm = MIXING_ALGORITHMS[(currentIndex + 1) % MIXING_ALGORITHMS.length];
+      
+      // Force a gradient recalculation by triggering setValue with the same values
+      this.setValue([...this.value], options);
+      
+      // Redraw
+      node.setDirtyCanvas(true, true);
+      return true;
+    }
     
     // Check if clicking on a stop
     const clickedStopIndex = this.getStopAtPosition(x, y);
@@ -545,12 +590,12 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       }
     }
     
-    // Calculate the color
+    // Calculate the color using the current mixing algorithm
     return this.interpolateColor(lower.color, upper.color, (position - lower.position) / (upper.position - lower.position));
   }
   
   /**
-   * Linear interpolation between two colors
+   * Linear interpolation between two colors using the current mixing algorithm
    */
   private interpolateColor(color1: string, color2: string, factor: number): string {
     // Convert hex to rgb
@@ -561,14 +606,41 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     const r2 = parseInt(color2.substr(1, 2), 16);
     const g2 = parseInt(color2.substr(3, 2), 16);
     const b2 = parseInt(color2.substr(5, 2), 16);
+
+    let r: number, g: number, b: number;
     
-    // Interpolate
-    const r = Math.round(r1 + factor * (r2 - r1));
-    const g = Math.round(g1 + factor * (g2 - g1));
-    const b = Math.round(b1 + factor * (b2 - b1));
+    switch (this.currentMixingAlgorithm) {
+      case 'Oklab': {
+        const [l1, a1, b1_] = this.rgbToOklab(r1, g1, b1);
+        const [l2, a2, b2_] = this.rgbToOklab(r2, g2, b2);
+        
+        const l = l1 + factor * (l2 - l1);
+        const a = a1 + factor * (a2 - a1);
+        const b_ = b1_ + factor * (b2_ - b1_);
+        
+        [r, g, b] = this.oklabToRgb(l, a, b_);
+        break;
+      }
+      case 'CIELAB': {
+        const [l1, a1, b1_] = this.rgbToCIELAB(r1, g1, b1);
+        const [l2, a2, b2_] = this.rgbToCIELAB(r2, g2, b2);
+        
+        const l = l1 + factor * (l2 - l1);
+        const a = a1 + factor * (a2 - a1);
+        const b_ = b1_ + factor * (b2_ - b1_);
+        
+        [r, g, b] = this.cielabToRgb(l, a, b_);
+        break;
+      }
+      default: { // RGB
+        r = Math.round(r1 + factor * (r2 - r1));
+        g = Math.round(g1 + factor * (g2 - g1));
+        b = Math.round(b1 + factor * (b2 - b1));
+      }
+    }
     
     // Convert back to hex
-    return `#${(r).toString(16).padStart(2, '0')}${(g).toString(16).padStart(2, '0')}${(b).toString(16).padStart(2, '0')}`;
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
   }
   
   /**
@@ -620,6 +692,142 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     }, 10);
   }
 
+  /**
+   * Check if point is over the algorithm label
+   */
+  private isOverAlgorithmLabel(x: number, y: number): boolean {
+    return (
+      x >= this.algorithmLabelRect.x && 
+      x <= this.algorithmLabelRect.x + this.algorithmLabelRect.width && 
+      y >= this.algorithmLabelRect.y && 
+      y <= this.algorithmLabelRect.y + this.algorithmLabelRect.height
+    );
+  }
 
+  /**
+   * Convert RGB to Oklab
+   */
+  private rgbToOklab(r: number, g: number, b: number): [number, number, number] {
+    // Convert RGB [0,1] to linear RGB
+    r = Math.pow(r / 255, 2.2);
+    g = Math.pow(g / 255, 2.2);
+    b = Math.pow(b / 255, 2.2);
 
+    // Convert to Oklab
+    const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+    const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+    const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+
+    const l_ = Math.cbrt(l);
+    const m_ = Math.cbrt(m);
+    const s_ = Math.cbrt(s);
+
+    return [
+      0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
+      1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
+      0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_,
+    ];
+  }
+
+  /**
+   * Convert Oklab to RGB
+   */
+  private oklabToRgb(L: number, a: number, b: number): [number, number, number] {
+    const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+    const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+    const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+
+    const l = l_ * l_ * l_;
+    const m = m_ * m_ * m_;
+    const s = s_ * s_ * s_;
+
+    let r = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+    let g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+    let b_ = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
+
+    // Convert to sRGB and clamp
+    r = Math.min(255, Math.max(0, Math.round(Math.pow(r, 1/2.2) * 255)));
+    g = Math.min(255, Math.max(0, Math.round(Math.pow(g, 1/2.2) * 255)));
+    b_ = Math.min(255, Math.max(0, Math.round(Math.pow(b_, 1/2.2) * 255)));
+
+    return [r, g, b_];
+  }
+
+  /**
+   * Convert RGB to CIELAB
+   */
+  private rgbToCIELAB(r: number, g: number, b: number): [number, number, number] {
+    // Convert RGB to XYZ
+    r = r / 255;
+    g = g / 255;
+    b = b / 255;
+
+    // Convert to linear RGB
+    r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+    g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+    b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+
+    // Convert to XYZ
+    const x = r * 0.4124564 + g * 0.3575761 + b * 0.1804375;
+    const y = r * 0.2126729 + g * 0.7151522 + b * 0.0721750;
+    const z = r * 0.0193339 + g * 0.1191920 + b * 0.9503041;
+
+    // Convert XYZ to Lab
+    const xn = 0.95047;
+    const yn = 1.0;
+    const zn = 1.08883;
+
+    const fx = x / xn > 0.008856 ? Math.pow(x / xn, 1/3) : (7.787 * x / xn) + 16/116;
+    const fy = y / yn > 0.008856 ? Math.pow(y / yn, 1/3) : (7.787 * y / yn) + 16/116;
+    const fz = z / zn > 0.008856 ? Math.pow(z / zn, 1/3) : (7.787 * z / zn) + 16/116;
+
+    const L = (116 * fy) - 16;
+    const a = 500 * (fx - fy);
+    const b_ = 200 * (fy - fz);
+
+    return [L, a, b_];
+  }
+
+  /**
+   * Convert CIELAB to RGB
+   */
+  private cielabToRgb(L: number, a: number, b: number): [number, number, number] {
+    // Convert Lab to XYZ
+    const y = (L + 16) / 116;
+    const x = a / 500 + y;
+    const z = y - b / 200;
+
+    const xn = 0.95047;
+    const yn = 1.0;
+    const zn = 1.08883;
+
+    const x3 = Math.pow(x, 3);
+    const y3 = Math.pow(y, 3);
+    const z3 = Math.pow(z, 3);
+
+    const xr = x3 > 0.008856 ? x3 : (x - 16/116) / 7.787;
+    const yr = y3 > 0.008856 ? y3 : (y - 16/116) / 7.787;
+    const zr = z3 > 0.008856 ? z3 : (z - 16/116) / 7.787;
+
+    const X = xr * xn;
+    const Y = yr * yn;
+    const Z = zr * zn;
+
+    // Convert XYZ to RGB
+    let r = X * 3.2404542 - Y * 1.5371385 - Z * 0.4985314;
+    let g = -X * 0.9692660 + Y * 1.8760108 + Z * 0.0415560;
+    let b_ = X * 0.0556434 - Y * 0.2040259 + Z * 1.0572252;
+
+    // Convert to sRGB
+    r = r > 0.0031308 ? 1.055 * Math.pow(r, 1/2.4) - 0.055 : 12.92 * r;
+    g = g > 0.0031308 ? 1.055 * Math.pow(g, 1/2.4) - 0.055 : 12.92 * g;
+    b_ = b_ > 0.0031308 ? 1.055 * Math.pow(b_, 1/2.4) - 0.055 : 12.92 * b_;
+
+    // Convert to RGB [0-255] and clamp
+    r = Math.min(255, Math.max(0, Math.round(r * 255)));
+    g = Math.min(255, Math.max(0, Math.round(g * 255)));
+    b_ = Math.min(255, Math.max(0, Math.round(b_ * 255)));
+
+    return [r, g, b_];
+  }
 } 
