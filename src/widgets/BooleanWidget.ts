@@ -35,7 +35,7 @@ export class BooleanWidget extends BaseWidget implements IBooleanWidget {
     else ctx.rect(margin, y, width - margin * 2, height)
     ctx.fill()
     if (show_text && !this.computedDisabled) ctx.stroke()
-    ctx.fillStyle = this.value ? "#89A" : "#333"
+    ctx.fillStyle = this.value ? "#636994" : "#333"
     ctx.beginPath()
     ctx.arc(
       width - margin * 2,
