@@ -5,7 +5,7 @@ import type { IStringWidget, IWidgetOptions } from "@/types/widgets"
 
 import { BaseWidget, type DrawWidgetOptions } from "./BaseWidget"
 
-export class TextWidget extends BaseWidget implements IStringWidget {
+export class HeaderWidget extends BaseWidget implements IStringWidget {
   // IStringWidget properties
   declare type: "text" | "string"
   declare value: string
@@ -38,26 +38,15 @@ export class TextWidget extends BaseWidget implements IStringWidget {
     ctx.textAlign = "left"
     ctx.strokeStyle = this.outline_color
     ctx.fillStyle = this.background_color
-    ctx.beginPath()
-
-    if (show_text)
-      ctx.roundRect(margin, y, width - margin * 2, height, [height * 0.5])
-    else
-      ctx.rect(margin, y, width - margin * 2, height)
-    ctx.fill()
 
     if (show_text) {
-      if (!this.computedDisabled) ctx.stroke()
+      if (!this.disabled) ctx.stroke()
       ctx.save()
-      ctx.beginPath()
-      ctx.rect(margin, y, width - margin * 2, height)
-      ctx.clip()
-
       // Draw label
       ctx.fillStyle = this.secondary_text_color
       const label = this.label || this.name
       if (label != null) {
-        ctx.fillText(label, margin * 2, y + height * 0.7)
+        ctx.fillText(label, margin, y + height * 0.7)
       }
 
       // Draw value
@@ -78,24 +67,5 @@ export class TextWidget extends BaseWidget implements IStringWidget {
     ctx.fillStyle = originalFillStyle
   }
 
-  override onClick(options: {
-    e: CanvasMouseEvent
-    node: LGraphNode
-    canvas: LGraphCanvas
-  }) {
-    const { e, node, canvas } = options
-
-    // Show prompt dialog for text input
-    canvas.prompt(
-      "Value",
-      this.value,
-      (v: string) => {
-        if (v !== null) {
-          this.setValue(v, { e, node, canvas })
-        }
-      },
-      e,
-      this.options?.multiline ?? false,
-    )
-  }
+  override onClick() {}
 }

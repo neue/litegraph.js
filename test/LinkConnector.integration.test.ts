@@ -105,6 +105,45 @@ const test = baseTest.extend<TestContext>({
           }
         }
       }
+
+      // Check that all link references are valid (Can be found in the graph)
+      for (const node of graph.nodes.values()) {
+        for (const input of node.inputs) {
+          if (input.link) {
+            expect(graph.links.keys()).toContain(input.link)
+            expect(graph.links.get(input.link)?.target_id).toBe(node.id)
+          }
+        }
+        for (const output of node.outputs) {
+          for (const linkId of output.links ?? []) {
+            expect(graph.links.keys()).toContain(linkId)
+            expect(graph.links.get(linkId)?.origin_id).toBe(node.id)
+          }
+        }
+      }
+
+      for (const link of graph._links.values()) {
+        expect(graph.getNodeById(link!.origin_id)?.outputs[link!.origin_slot].links).toContain(link.id)
+        expect(graph.getNodeById(link!.target_id)?.inputs[link!.target_slot].link).toBe(link.id)
+      }
+
+      for (const link of graph.floatingLinks.values()) {
+        if (link.target_id === -1) {
+          expect(link.origin_id).not.toBe(-1)
+          expect(link.origin_slot).not.toBe(-1)
+          expect(link.target_slot).toBe(-1)
+          const outputFloatingLinks = graph.getNodeById(link.origin_id)?.outputs[link.origin_slot]._floatingLinks
+          expect(outputFloatingLinks).toBeDefined()
+          expect(outputFloatingLinks).toContain(link)
+        } else {
+          expect(link.origin_id).toBe(-1)
+          expect(link.origin_slot).toBe(-1)
+          expect(link.target_slot).not.toBe(-1)
+          const inputFloatingLinks = graph.getNodeById(link.target_id)?.inputs[link.target_slot]._floatingLinks
+          expect(inputFloatingLinks).toBeDefined()
+          expect(inputFloatingLinks).toContain(link)
+        }
+      }
     })
   },
 
@@ -174,6 +213,7 @@ describe("LinkConnector Integration", () => {
       expect(connector.inputLinks.length).toBe(0)
 
       expect(disconnectedNode.inputs[0].link).toBe(nextLinkId)
+      expect(hasInputNode.inputs[0].link).toBeNull()
 
       const reroutesAfter = LLink.getReroutes(graph, graph.links.get(disconnectedNode.inputs[0].link!)!)
       expect(reroutesAfter).toEqual(reroutesBefore)
@@ -315,6 +355,7 @@ describe("LinkConnector Integration", () => {
       expect(connector.outputLinks.length).toBe(0)
 
       expect(disconnectedNode.outputs[0].links).toEqual(nextLinkIds)
+      expect(hasOutputNode.outputs[0].links).toEqual([])
 
       const reroutesAfter = disconnectedNode.outputs[0].links
         ?.map(linkId => graph.links.get(linkId)!)

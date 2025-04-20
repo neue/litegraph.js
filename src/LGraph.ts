@@ -919,7 +919,7 @@ export class LGraph implements LinkNetwork, Serialisable<SerialisableGraph> {
   /**
    * Returns a node by its id.
    */
-  getNodeById(id: NodeId): LGraphNode | null {
+  getNodeById(id: NodeId | null | undefined): LGraphNode | null {
     return id != null
       ? this._nodes_by_id[id]
       : null
@@ -1250,10 +1250,24 @@ export class LGraph implements LinkNetwork, Serialisable<SerialisableGraph> {
     const linkIds = before instanceof Reroute
       ? before.linkIds
       : [before.id]
-    const reroute = new Reroute(rerouteId, this, pos, before.parentId, linkIds)
+    const floatingLinkIds = before instanceof Reroute
+      ? before.floatingLinkIds
+      : [before.id]
+    const reroute = new Reroute(rerouteId, this, pos, before.parentId, linkIds, floatingLinkIds)
     this.reroutes.set(rerouteId, reroute)
     for (const linkId of linkIds) {
       const link = this._links.get(linkId)
+      if (!link) continue
+      if (link.parentId === before.parentId) link.parentId = rerouteId
+
+      const reroutes = LLink.getReroutes(this, link)
+      for (const x of reroutes.filter(x => x.parentId === before.parentId)) {
+        x.parentId = rerouteId
+      }
+    }
+
+    for (const linkId of floatingLinkIds) {
+      const link = this.floatingLinks.get(linkId)
       if (!link) continue
       if (link.parentId === before.parentId) link.parentId = rerouteId
 
@@ -1310,6 +1324,8 @@ export class LGraph implements LinkNetwork, Serialisable<SerialisableGraph> {
     }
 
     reroutes.delete(id)
+    // This does not belong here; it should be handled by the caller, or run by a remove-many API.
+    // https://github.com/Comfy-Org/litegraph.js/issues/898
     this.setDirtyCanvas(false, true)
   }
 
@@ -1551,6 +1567,8 @@ export class LGraph implements LinkNetwork, Serialisable<SerialisableGraph> {
     this.updateExecutionOrder()
 
     this.extra = data.extra || {}
+    // Ensure auto-generated serialisation data is removed from extra
+    delete this.extra.linkExtensions
 
     this.onConfigure?.(data)
     this._version++

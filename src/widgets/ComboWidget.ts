@@ -49,20 +49,20 @@ export class ComboWidget extends BaseWidget implements IComboWidget {
     ctx.fill()
 
     if (show_text) {
-      if (!this.disabled) {
+      if (!this.computedDisabled) {
         ctx.stroke()
         // Draw left arrow
         ctx.fillStyle = this.text_color
         ctx.beginPath()
-        ctx.moveTo(margin + 16, y + 5)
+        ctx.moveTo(margin + 10, y + 5)
         ctx.lineTo(margin + 6, y + height * 0.5)
-        ctx.lineTo(margin + 16, y + height - 5)
+        ctx.lineTo(margin + 10, y + height - 5)
         ctx.fill()
         // Draw right arrow
         ctx.beginPath()
-        ctx.moveTo(width - margin - 16, y + 5)
+        ctx.moveTo(width - margin - 10, y + 5)
         ctx.lineTo(width - margin - 6, y + height * 0.5)
-        ctx.lineTo(width - margin - 16, y + height - 5)
+        ctx.lineTo(width - margin - 10, y + height - 5)
         ctx.fill()
       }
 
