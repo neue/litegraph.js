@@ -215,7 +215,6 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     show_text = true,
     margin = 15,
   }: DrawWidgetOptions) {
-    console.log("drawWidget");
     
     // Store original context attributes
     const originalTextAlign = ctx.textAlign;
@@ -281,8 +280,8 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
         ctx.fillRect(this.gradientRect.x, this.gradientRect.y, this.gradientRect.width, this.gradientRect.height);
       } else {
         // For Oklab and CIELAB, we manually sample colors at small intervals for accurate representation
-        const pixelWidth = 1; // Width of each sampled color
-        const numSamples = Math.floor(this.gradientRect.width / pixelWidth);
+        const pixelWidth = 1; // Slightly wider samples for better performance
+        const numSamples = Math.ceil(this.gradientRect.width / pixelWidth);
         
         for (let i = 0; i < numSamples; i++) {
           const position = i / (numSamples - 1);
@@ -292,7 +291,7 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
           const color = this.getColorAtPosition(position);
           
           ctx.fillStyle = color;
-          ctx.fillRect(x, this.gradientRect.y, pixelWidth + 1, this.gradientRect.height);
+          ctx.fillRect(x, this.gradientRect.y, pixelWidth + 0.5, this.gradientRect.height);
         }
       }
     }
@@ -611,14 +610,17 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     
     switch (this.currentMixingAlgorithm) {
       case 'Oklab': {
-        const [l1, a1, b1_] = this.rgbToOklab(r1, g1, b1);
-        const [l2, a2, b2_] = this.rgbToOklab(r2, g2, b2);
+        // Convert to Oklab
+        const lab1 = this.rgbToOklab(r1, g1, b1);
+        const lab2 = this.rgbToOklab(r2, g2, b2);
         
-        const l = l1 + factor * (l2 - l1);
-        const a = a1 + factor * (a2 - a1);
-        const b_ = b1_ + factor * (b2_ - b1_);
+        // Interpolate in Oklab space
+        const L = lab1[0] + factor * (lab2[0] - lab1[0]);
+        const a = lab1[1] + factor * (lab2[1] - lab1[1]);
+        const b_ = lab1[2] + factor * (lab2[2] - lab1[2]);
         
-        [r, g, b] = this.oklabToRgb(l, a, b_);
+        // Convert back to RGB
+        [r, g, b] = this.oklabToRgb(L, a, b_);
         break;
       }
       case 'CIELAB': {
@@ -708,15 +710,20 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
    * Convert RGB to Oklab
    */
   private rgbToOklab(r: number, g: number, b: number): [number, number, number] {
-    // Convert RGB [0,1] to linear RGB
-    r = Math.pow(r / 255, 2.2);
-    g = Math.pow(g / 255, 2.2);
-    b = Math.pow(b / 255, 2.2);
+    // Normalize RGB [0-255] to [0-1]
+    const r_ = r / 255;
+    const g_ = g / 255;
+    const b_ = b / 255;
+
+    // Convert sRGB to linear RGB
+    const lr = r_ <= 0.04045 ? r_ / 12.92 : Math.pow((r_ + 0.055) / 1.055, 2.4);
+    const lg = g_ <= 0.04045 ? g_ / 12.92 : Math.pow((g_ + 0.055) / 1.055, 2.4);
+    const lb = b_ <= 0.04045 ? b_ / 12.92 : Math.pow((b_ + 0.055) / 1.055, 2.4);
 
     // Convert to Oklab
-    const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
-    const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
-    const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+    const l = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
+    const m = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
+    const s = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
 
     const l_ = Math.cbrt(l);
     const m_ = Math.cbrt(m);
@@ -741,14 +748,19 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     const m = m_ * m_ * m_;
     const s = s_ * s_ * s_;
 
-    let r = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+    let r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
     let g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
     let b_ = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
 
-    // Convert to sRGB and clamp
-    r = Math.min(255, Math.max(0, Math.round(Math.pow(r, 1/2.2) * 255)));
-    g = Math.min(255, Math.max(0, Math.round(Math.pow(g, 1/2.2) * 255)));
-    b_ = Math.min(255, Math.max(0, Math.round(Math.pow(b_, 1/2.2) * 255)));
+    // Convert linear RGB to sRGB
+    r = r <= 0.0031308 ? 12.92 * r : 1.055 * Math.pow(r, 1/2.4) - 0.055;
+    g = g <= 0.0031308 ? 12.92 * g : 1.055 * Math.pow(g, 1/2.4) - 0.055;
+    b_ = b_ <= 0.0031308 ? 12.92 * b_ : 1.055 * Math.pow(b_, 1/2.4) - 0.055;
+
+    // Convert to RGB [0-255] and clamp
+    r = Math.min(255, Math.max(0, Math.round(r * 255)));
+    g = Math.min(255, Math.max(0, Math.round(g * 255)));
+    b_ = Math.min(255, Math.max(0, Math.round(b_ * 255)));
 
     return [r, g, b_];
   }
