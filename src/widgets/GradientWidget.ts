@@ -15,6 +15,7 @@ interface IGradientAwareNode extends LGraphNode {
 let globalColorInput: HTMLInputElement | null = null;
 let activeGradientWidget: GradientWidget | null = null;
 let activeStopIndex: number = -1;
+let isDraggingStop: boolean = false; // Add a flag to track drag state globally
 let currentOptions: {
   e: CanvasMouseEvent;
   node: LGraphNode;
@@ -163,6 +164,9 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   private gradientRect: { x: number, y: number, width: number, height: number } = { x: 0, y: 0, width: 0, height: 0 };
   private stopAreaRect: { x: number, y: number, width: number, height: number } = { x: 0, y: 0, width: 0, height: 0 };
   private algorithmLabelRect: { x: number, y: number, width: number, height: number } = { x: 0, y: 0, width: 0, height: 0 };
+  
+  // Add a flag to track if we're currently in a drag operation
+  private isDragging: boolean = false;
   
   /**
    * Compute the layout size of the widget.
@@ -374,6 +378,11 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
    * Checks if a point is over a gradient stop
    */
   private getStopAtPosition(x: number, y: number): number {
+    // If we're already dragging, don't change the selection
+    if (this.isDragging || isDraggingStop) {
+      return this.selectedStopIndex;
+    }
+    
     console.log("getStopAtPosition");
     
     const stopSize = 14;
@@ -455,6 +464,10 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
   }) {
     console.log("onClick");
     if (this.options.read_only) return;
+
+    // Reset drag state on click
+    this.isDragging = false;
+    isDraggingStop = false;
 
     const { e, node, canvas } = options;
     const x = e.canvasX - node.pos[0];
@@ -541,9 +554,14 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     const x = e.canvasX - node.pos[0];
     const y = e.canvasY - node.pos[1];
     
-    // Only drag if the internal selection matches the global activeStopIndex
-    // This prevents dragging stops that aren't visually selected with yellow outline
-    if (this.selectedStopIndex !== -1 && this.selectedStopIndex === activeStopIndex) {
+    // If this is the first drag event, set the dragging flags
+    if (!this.isDragging && this.selectedStopIndex !== -1) {
+      this.isDragging = true;
+      isDraggingStop = true;
+    }
+    
+    // Only drag if we have a selected stop
+    if (this.selectedStopIndex !== -1) {
       // Check if dragging far enough down to delete the stop
       const deleteThreshold = this.stopAreaRect.y + this.stopAreaRect.height + 50;
       if (y > deleteThreshold && this.value.length > 2) {
@@ -557,6 +575,10 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
         // Clear selection
         this.selectedStopIndex = -1;
         activeStopIndex = -1;
+        
+        // Reset drag state
+        this.isDragging = false;
+        isDraggingStop = false;
         
         // Release capture
         node.captureInput(false);
@@ -578,6 +600,16 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     }
     
     return false;
+  }
+  
+  // When dragging ends, we need to reset the drag state
+  onMouseUp?(options: {
+    e: CanvasMouseEvent
+    node: LGraphNode
+    canvas: LGraphCanvas
+  }) {
+    this.isDragging = false;
+    isDraggingStop = false;
   }
   
   /**
@@ -917,8 +949,21 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     node: LGraphNode;
     canvas: LGraphCanvas;
   }): void {
-    // Sort stops by position
+    // Sort stops by position and update value
     this.value = [...stops].sort((a, b) => a.position - b.position);
+    
+    // Find new index of the selected stop after sorting if we're dragging
+    if (this.isDragging && this.selectedStopIndex !== -1 && options) {
+      // After sorting, the selected stop may have a new index
+      // Find it based on the original position
+      const originalStop = stops[this.selectedStopIndex];
+      this.selectedStopIndex = this.value.findIndex(
+        stop => stop.position === originalStop.position && stop.color === originalStop.color
+      );
+      
+      // Update global index too
+      activeStopIndex = this.selectedStopIndex;
+    }
     
     // Call the node's onWidgetChanged method if it exists
     if (options?.node) {
