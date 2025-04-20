@@ -62,7 +62,6 @@ function getGlobalColorInput(): HTMLInputElement {
 
 // Schedule a color update for next animation frame
 function handleColorChange() {
-    console.log("handleColorChange");
     
   if (!globalColorInput || !activeGradientWidget || !currentOptions || activeStopIndex === -1) return;
   
@@ -92,7 +91,6 @@ function handleColorChange() {
 
 // Apply the current color change to the active stop
 function applyColorChange() {
-    console.log("applyColorChange");
   if (globalColorInput && activeGradientWidget && currentOptions && activeStopIndex !== -1) {
     const stops = [...activeGradientWidget.value];
     stops[activeStopIndex].color = globalColorInput.value;
@@ -383,7 +381,6 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
       return this.selectedStopIndex;
     }
     
-    console.log("getStopAtPosition");
     
     const stopSize = 14;
     const hitArea = stopSize * 1.5; // Make the hit area larger than the visual size
@@ -411,7 +408,6 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
    * Check if point is within the gradient rect
    */
   private isOverGradient(x: number, y: number): boolean {
-    console.log("isOverGradient");
     
     return (
       x >= this.gradientRect.x && 
@@ -462,7 +458,6 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     node: LGraphNode
     canvas: LGraphCanvas
   }) {
-    console.log("onClick");
     if (this.options.read_only) return;
 
     // Reset drag state on click
@@ -510,7 +505,6 @@ export class GradientWidget extends BaseWidget implements IGradientWidget {
     
     // Check if clicking on the gradient
     if (this.isOverGradient(x, y)) {
-      console.log("onclick isOverGradient true");
       
       // Add a new stop
       const position = this.getNormalizedPosition(x, y);
