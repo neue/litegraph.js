@@ -46,6 +46,8 @@ import { distributeSpace } from "./utils/spaceDistribution"
 import { toClass } from "./utils/type"
 import { WIDGET_TYPE_MAP } from "./widgets/widgetMap"
 
+// #region Types
+
 export type NodeId = number | string
 
 export type NodeProperty = string | number | boolean | object
@@ -84,6 +86,32 @@ export interface FindFreeSlotOptions {
   typesNotAccepted?: ISlotType[]
   /** If true, the slot itself is returned instead of the index.  Default: false */
   returnObj?: boolean
+}
+
+interface DrawSlotsOptions {
+  fromSlot?: INodeInputSlot | INodeOutputSlot
+  colorContext: ConnectionColorContext
+  editorAlpha: number
+  lowQuality: boolean
+}
+
+interface DrawWidgetsOptions {
+  lowQuality?: boolean
+  editorAlpha?: number
+}
+
+interface DrawTitleOptions {
+  scale: number
+  title_height?: number
+  low_quality?: boolean
+}
+
+interface DrawTitleTextOptions extends DrawTitleOptions {
+  default_title_color: string
+}
+
+interface DrawTitleBoxOptions extends DrawTitleOptions {
+  box_size?: number
 }
 
 /*
@@ -141,6 +169,8 @@ supported callbacks:
 export interface LGraphNode {
   constructor: LGraphNodeConstructor
 }
+
+// #endregion Types
 
 /**
  * Base Class for all the node type classes
@@ -701,8 +731,9 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
       }
 
       if (info.widgets_values) {
+        const widgetsWithValue = this.widgets.filter(w => w.serialize !== false)
         for (let i = 0; i < info.widgets_values.length; ++i) {
-          const widget = this.widgets[i]
+          const widget = widgetsWithValue[i]
           if (widget) {
             widget.value = info.widgets_values[i]
           }
@@ -747,6 +778,7 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
     if (widgets && this.serialize_widgets) {
       o.widgets_values = []
       for (const [i, widget] of widgets.entries()) {
+        if (widget.serialize === false) continue
         // @ts-expect-error #595 No-null
         o.widgets_values[i] = widget ? widget.value : null
       }
@@ -2871,14 +2903,35 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
 
     // default vertical slots
     const offset = LiteGraph.NODE_SLOT_HEIGHT * 0.5
+    const slotIndex = is_input
+      ? this.#defaultVerticalInputs.indexOf(this.inputs[slot_number])
+      : this.#defaultVerticalOutputs.indexOf(this.outputs[slot_number])
+
     out[0] = is_input
       ? nodeX + offset
       : nodeX + this.size[0] + 1 - offset
     out[1] =
       nodeY +
-      (slot_number + 0.7) * LiteGraph.NODE_SLOT_HEIGHT +
+      (slotIndex + 0.7) * LiteGraph.NODE_SLOT_HEIGHT +
       (this.constructor.slot_start_y || 0)
     return out
+  }
+
+  /**
+   * @internal The inputs that are not positioned with absolute coordinates.
+   */
+  get #defaultVerticalInputs() {
+    return this.inputs.filter((slot: INodeInputSlot) => !(
+      slot.pos ||
+      (this.widgets?.length && isWidgetInputSlot(slot))
+    ))
+  }
+
+  /**
+   * @internal The outputs that are not positioned with absolute coordinates.
+   */
+  get #defaultVerticalOutputs() {
+    return this.outputs.filter((slot: INodeOutputSlot) => !slot.pos)
   }
 
   /**
@@ -2902,7 +2955,8 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
     // default vertical slots
     const offsetX = LiteGraph.NODE_SLOT_HEIGHT * 0.5
     const nodeOffsetY = this.constructor.slot_start_y || 0
-    const slotY = (slot + 0.7) * LiteGraph.NODE_SLOT_HEIGHT
+    const slotIndex = this.#defaultVerticalInputs.indexOf(this.inputs[slot])
+    const slotY = (slotIndex + 0.7) * LiteGraph.NODE_SLOT_HEIGHT
 
     return [nodeX + offsetX, nodeY + slotY + nodeOffsetY]
   }
@@ -2924,12 +2978,13 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
     }
 
     const outputPos = outputs?.[slot]?.pos
-    if (outputPos) return outputPos
+    if (outputPos) return [nodeX + outputPos[0], nodeY + outputPos[1]]
 
     // default vertical slots
     const offsetX = LiteGraph.NODE_SLOT_HEIGHT * 0.5
     const nodeOffsetY = this.constructor.slot_start_y || 0
-    const slotY = (slot + 0.7) * LiteGraph.NODE_SLOT_HEIGHT
+    const slotIndex = this.#defaultVerticalOutputs.indexOf(this.outputs[slot])
+    const slotY = (slotIndex + 0.7) * LiteGraph.NODE_SLOT_HEIGHT
 
     // TODO: Why +1?
     return [nodeX + width + 1 - offsetX, nodeY + slotY + nodeOffsetY]
@@ -3089,17 +3144,11 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
   /**
    * Renders the node's title bar background
    */
-  drawTitleBarBackground(ctx: CanvasRenderingContext2D, options: {
-    scale: number
-    title_height?: number
-    low_quality?: boolean
-  }): void {
-    const {
-      scale,
-      title_height = LiteGraph.NODE_TITLE_HEIGHT,
-      low_quality = false,
-    } = options
-
+  drawTitleBarBackground(ctx: CanvasRenderingContext2D, {
+    scale,
+    title_height = LiteGraph.NODE_TITLE_HEIGHT,
+    low_quality = false,
+  }: DrawTitleOptions): void {
     const fgcolor = this.renderingColor
     const shape = this.renderingShape
     const size = this.renderingSize
@@ -3142,19 +3191,12 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
    * when clicked toggles the node's collapsed state. The term `title box` comes
    * from the original LiteGraph implementation.
    */
-  drawTitleBox(ctx: CanvasRenderingContext2D, options: {
-    scale: number
-    low_quality?: boolean
-    title_height?: number
-    box_size?: number
-  }): void {
-    const {
-      scale,
-      low_quality = false,
-      title_height = LiteGraph.NODE_TITLE_HEIGHT,
-      box_size = 10,
-    } = options
-
+  drawTitleBox(ctx: CanvasRenderingContext2D, {
+    scale,
+    low_quality = false,
+    title_height = LiteGraph.NODE_TITLE_HEIGHT,
+    box_size = 10,
+  }: DrawTitleBoxOptions): void {
     const size = this.renderingSize
     const shape = this.renderingShape
 
@@ -3221,19 +3263,12 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
   /**
    * Renders the node's title text.
    */
-  drawTitleText(ctx: CanvasRenderingContext2D, options: {
-    scale: number
-    default_title_color: string
-    low_quality?: boolean
-    title_height?: number
-  }): void {
-    const {
-      scale,
-      default_title_color,
-      low_quality = false,
-      title_height = LiteGraph.NODE_TITLE_HEIGHT,
-    } = options
-
+  drawTitleText(ctx: CanvasRenderingContext2D, {
+    scale,
+    default_title_color,
+    low_quality = false,
+    title_height = LiteGraph.NODE_TITLE_HEIGHT,
+  }: DrawTitleTextOptions): void {
     const size = this.renderingSize
     const selected = this.selected
 
@@ -3375,13 +3410,11 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
     return !isHidden
   }
 
-  drawWidgets(ctx: CanvasRenderingContext2D, options: {
-    lowQuality?: boolean
-    editorAlpha?: number
-  }): void {
+  drawWidgets(ctx: CanvasRenderingContext2D, {
+    lowQuality = false,
+    editorAlpha = 1,
+  }: DrawWidgetsOptions): void {
     if (!this.widgets) return
-
-    const { lowQuality = false, editorAlpha = 1 } = options
 
     const width = this.size[0]
     const widgets = this.widgets
@@ -3467,10 +3500,7 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
     return [...this.inputs, ...this.outputs]
   }
 
-  #layoutSlot(slot: INodeSlot, options: {
-    slotIndex: number
-  }): void {
-    const { slotIndex } = options
+  #measureSlot(slot: INodeSlot, slotIndex: number): LayoutElement<INodeSlot> {
     const isInput = isINodeInputSlot(slot)
     const pos = isInput ? this.getInputPos(slotIndex) : this.getOutputPos(slotIndex)
 
@@ -3483,31 +3513,24 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
         LiteGraph.NODE_SLOT_HEIGHT,
       ],
     })
+    return slot._layoutElement
   }
 
-  #layoutSlots(): ReadOnlyRect | null {
+  #measureSlots(): ReadOnlyRect | null {
     const slots: LayoutElement<INodeSlot>[] = []
 
-    for (const [i, slot] of this.inputs.entries()) {
+    for (const [slotIndex, slot] of this.inputs.entries()) {
       // Unrecognized nodes (Nodes with error) has inputs but no widgets. Treat
       // converted inputs as normal inputs.
       /** Widget input slots are handled in {@link layoutWidgetInputSlots} */
       if (this.widgets?.length && isWidgetInputSlot(slot)) continue
 
-      this.#layoutSlot(slot, {
-        slotIndex: i,
-      })
-      if (slot._layoutElement) {
-        slots.push(slot._layoutElement)
-      }
+      const layoutElement = this.#measureSlot(slot, slotIndex)
+      slots.push(layoutElement)
     }
-    for (const [i, slot] of this.outputs.entries()) {
-      this.#layoutSlot(slot, {
-        slotIndex: i,
-      })
-      if (slot._layoutElement) {
-        slots.push(slot._layoutElement)
-      }
+    for (const [slotIndex, slot] of this.outputs.entries()) {
+      const layoutElement = this.#measureSlot(slot, slotIndex)
+      slots.push(layoutElement)
     }
 
     return slots.length ? createBounds(slots, /** padding= */ 0) : null
@@ -3548,14 +3571,12 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
   /**
    * Draws the node's input and output slots.
    */
-  drawSlots(ctx: CanvasRenderingContext2D, options: {
-    fromSlot?: INodeInputSlot | INodeOutputSlot
-    colorContext: ConnectionColorContext
-    editorAlpha: number
-    lowQuality: boolean
-  }) {
-    const { fromSlot, colorContext, editorAlpha, lowQuality } = options
-
+  drawSlots(ctx: CanvasRenderingContext2D, {
+    fromSlot,
+    colorContext,
+    editorAlpha,
+    lowQuality,
+  }: DrawSlotsOptions) {
     for (const slot of this.slots) {
       // change opacity of incompatible slots when dragging a connection
       const layoutElement = slot._layoutElement
@@ -3572,6 +3593,7 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
       // - the slot is valid during link drop
       // - the slot is connected
       const showSlot = !isWidgetInputSlot(slot) ||
+        this.#isMouseOverSlot(slot) ||
         this.#isMouseOverWidget(this.getWidgetFromSlot(slot)!) ||
         (fromSlot && slotInstance.isValidTarget(fromSlot)) ||
         slotInstance.isConnected()
@@ -3589,20 +3611,21 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
   }
 
   /**
-   * Lays out the node's widgets vertically.
+   * Arranges the node's widgets vertically.
    * Sets following properties on each widget:
    * -  {@link IBaseWidget.computedHeight}
    * -  {@link IBaseWidget.y}
+   * @param widgetStartY The y-coordinate of the first widget
    */
-  #layoutWidgets(options: { widgetStartY: number }): void {
+  #arrangeWidgets(widgetStartY: number): void {
     if (!this.widgets || !this.widgets.length) return
 
     const bodyHeight = this.bodyHeight
-    const widgetStartY = this.widgets_start_y ?? (
-      (this.widgets_up ? 0 : options.widgetStartY) + 2
+    const startY = this.widgets_start_y ?? (
+      (this.widgets_up ? 0 : widgetStartY) + 2
     )
 
-    let freeSpace = bodyHeight - widgetStartY
+    let freeSpace = bodyHeight - startY
 
     // Collect fixed height widgets first
     let fixedWidgetHeight = 0
@@ -3650,7 +3673,7 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
     }
 
     // Position widgets
-    let y = widgetStartY
+    let y = startY
     for (const w of this.widgets) {
       w.y = y
       y += w.computedHeight ?? 0
@@ -3669,9 +3692,9 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
   }
 
   /**
-   * Lays out the node's widget input slots.
+   * Arranges the layout of the node's widget input slots.
    */
-  #layoutWidgetInputSlots(): void {
+  #arrangeWidgetInputSlots(): void {
     if (!this.widgets) return
 
     const slotByWidgetName = new Map<string, INodeInputSlot & { index: number }>()
@@ -3690,15 +3713,18 @@ export class LGraphNode implements Positionable, IPinnable, IColorable {
       const actualSlot = this.inputs[slot.index]
       const offset = LiteGraph.NODE_SLOT_HEIGHT * 0.5
       actualSlot.pos = [offset, widget.y + offset]
-      this.#layoutSlot(actualSlot, { slotIndex: slot.index })
+      this.#measureSlot(actualSlot, slot.index)
     }
   }
 
-  layout(): void {
-    const slotsBounds = this.#layoutSlots()
+  /**
+   * Arranges node elements in preparation for rendering (slots & widgets).
+   */
+  arrange(): void {
+    const slotsBounds = this.#measureSlots()
     const widgetStartY = slotsBounds ? slotsBounds[1] + slotsBounds[3] : 0
-    this.#layoutWidgets({ widgetStartY })
-    this.#layoutWidgetInputSlots()
+    this.#arrangeWidgets(widgetStartY)
+    this.#arrangeWidgetInputSlots()
   }
 
   /**

@@ -25,7 +25,8 @@ export class BooleanWidget extends BaseWidget implements IBooleanWidget {
     const { height } = this
 
     ctx.textAlign = "left"
-    ctx.strokeStyle = this.outline_color
+    // ctx.strokeStyle = this.outline_color
+    ctx.strokeStyle = this.background_color
     ctx.fillStyle = this.background_color
     ctx.beginPath()
 
@@ -34,7 +35,7 @@ export class BooleanWidget extends BaseWidget implements IBooleanWidget {
     else ctx.rect(margin, y, width - margin * 2, height)
     ctx.fill()
     if (show_text && !this.computedDisabled) ctx.stroke()
-    ctx.fillStyle = this.value ? "#89A" : "#333"
+    ctx.fillStyle = this.value ? "#636994" : "#333"
     ctx.beginPath()
     ctx.arc(
       width - margin * 2,

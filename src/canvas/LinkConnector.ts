@@ -211,7 +211,7 @@ export class LinkConnector {
       }
     }
 
-    if (renderLinks.length === 0) return this.reset()
+    if (renderLinks.length === 0) return
 
     state.draggingExistingLinks = true
     state.multi = true
@@ -309,11 +309,14 @@ export class LinkConnector {
    * @param event Contains the drop location, in canvas space
    */
   dropLinks(locator: ItemLocator, event: CanvasPointerEvent): void {
-    if (!this.isConnecting) return this.reset()
+    if (!this.isConnecting) {
+      console.warn("Attempted to drop links when not connecting to anything.")
+      return
+    }
 
     const { renderLinks } = this
     const mayContinue = this.events.dispatch("before-drop-links", { renderLinks, event })
-    if (mayContinue === false) return this.reset()
+    if (mayContinue === false) return
 
     const { canvasX, canvasY } = event
     const node = locator.getNodeOnPos(canvasX, canvasY) ?? undefined
@@ -331,7 +334,6 @@ export class LinkConnector {
     }
 
     this.events.dispatch("after-drop-links", { renderLinks, event })
-    this.reset()
   }
 
   dropOnNode(node: LGraphNode, event: CanvasPointerEvent) {
@@ -409,14 +411,10 @@ export class LinkConnector {
         }
       }
 
-      // Flat map and filter before any connections are re-created
-      const better = this.renderLinks
-        .flatMap(renderLink => results.map(result => ({ renderLink, result })))
-        .filter(({ renderLink, result }) => renderLink.toType === "input" && canConnectInputLinkToReroute(renderLink, result.node, result.input, reroute))
+      // Filter before any connections are re-created
+      const filtered = results.filter(result => renderLink.toType === "input" && canConnectInputLinkToReroute(renderLink, result.node, result.input, reroute))
 
-      for (const { renderLink, result } of better) {
-        if (renderLink.toType !== "input") continue
-
+      for (const result of filtered) {
         renderLink.connectToRerouteInput(reroute, result, this.events, originalReroutes)
       }
 
@@ -439,14 +437,22 @@ export class LinkConnector {
 
   dropOnNothing(event: CanvasPointerEvent): void {
     // For external event only.
+    const mayContinue = this.events.dispatch("dropped-on-canvas", event)
+    if (mayContinue === false) return
+
     if (this.state.connectingTo === "input") {
       for (const link of this.renderLinks) {
         if (link instanceof MovingInputLink) {
           link.inputNode.disconnectInput(link.inputIndex, true)
         }
       }
+    } else if (this.state.connectingTo === "output") {
+      for (const link of this.renderLinks) {
+        if (link instanceof MovingOutputLink) {
+          link.outputNode.disconnectOutput(link.outputIndex, link.inputNode)
+        }
+      }
     }
-    this.events.dispatch("dropped-on-canvas", event)
   }
 
   /**
@@ -612,7 +618,8 @@ export class LinkConnector {
    * Effectively cancels moving or connecting links.
    */
   reset(force = false): void {
-    this.events.dispatch("reset", force)
+    const mayContinue = this.events.dispatch("reset", force)
+    if (mayContinue === false) return
 
     const { state, outputLinks, inputLinks, hiddenReroutes, renderLinks, floatingLinks } = this
 
