@@ -21,6 +21,7 @@
   },
   "private": false,
   "scripts": {
+    "prepare": "npm run build",
     "build": "tsc && vite build",
     "dev": "vite",
     "preview": "vite preview",
