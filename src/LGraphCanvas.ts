@@ -4641,9 +4641,9 @@ export class LGraphCanvas implements CustomEventDispatcher<LGraphCanvasEventMap>
 
     if (this.render_shadows && !low_quality) {
       ctx.shadowColor = LiteGraph.DEFAULT_SHADOW_COLOR
-      ctx.shadowOffsetX = 2 * this.ds.scale
-      ctx.shadowOffsetY = 2 * this.ds.scale
-      ctx.shadowBlur = 3 * this.ds.scale
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 12 * this.ds.scale
+      ctx.shadowBlur = 30 * this.ds.scale
     } else {
       ctx.shadowColor = "transparent"
     }
@@ -4802,15 +4802,15 @@ export class LGraphCanvas implements CustomEventDispatcher<LGraphCanvasEventMap>
     // Hard-coded tooltip limit
     text = text.substring(0, 30)
 
-    ctx.font = "14px Courier New"
+    ctx.font = "14px Fira"
     const info = ctx.measureText(text)
     const w = info.width + 20
     const h = 24
-    ctx.shadowColor = "black"
-    ctx.shadowOffsetX = 2
+    ctx.shadowColor = "rgba(0,0,0,0.5)"
+    ctx.shadowOffsetX = 0
     ctx.shadowOffsetY = 2
-    ctx.shadowBlur = 3
-    ctx.fillStyle = "#454"
+    ctx.shadowBlur = 15
+    ctx.fillStyle = "#1A1A1A"
     ctx.beginPath()
     ctx.roundRect(pos[0] - w * 0.5, pos[1] - 15 - h, w, h, [3])
     ctx.moveTo(pos[0] - 10, pos[1] - 15)
@@ -4819,7 +4819,7 @@ export class LGraphCanvas implements CustomEventDispatcher<LGraphCanvasEventMap>
     ctx.fill()
     ctx.shadowColor = "transparent"
     ctx.textAlign = "center"
-    ctx.fillStyle = "#CEC"
+    ctx.fillStyle = "#D9D9D9"
     ctx.fillText(text, pos[0], pos[1] - 15 - h * 0.3)
   }
 
