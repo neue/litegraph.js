@@ -2695,6 +2695,7 @@ export class LGraphNode implements NodeLike, Positionable, IPinnable, IColorable
 
     this.setDirtyCanvas(false, true)
     graph.afterChange()
+    graph.connectionChange(this)
 
     return link
   }
@@ -2862,6 +2863,7 @@ export class LGraphNode implements NodeLike, Positionable, IPinnable, IColorable
     }
 
     this.setDirtyCanvas(false, true)
+    this.graph?.connectionChange(this)
     return true
   }
 
@@ -2957,6 +2959,7 @@ export class LGraphNode implements NodeLike, Positionable, IPinnable, IColorable
     }
 
     this.setDirtyCanvas(false, true)
+    this.graph?.connectionChange(this)
     return true
   }
 
@@ -3142,7 +3145,6 @@ export class LGraphNode implements NodeLike, Positionable, IPinnable, IColorable
    * @deprecated Use {@link LGraphCanvas.pointer} instead.
    */
   captureInput(v: boolean): void {
-    warnDeprecated("[DEPRECATED] captureInput will be removed in a future version. Please use LGraphCanvas.pointer (CanvasPointer) instead.")
     if (!this.graph || !this.graph.list_of_graphcanvas) return
 
     const list = this.graph.list_of_graphcanvas

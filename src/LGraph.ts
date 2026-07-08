@@ -1171,6 +1171,18 @@ export class LGraph implements LinkNetwork, BaseLGraph, Serialisable<Serialisabl
   }
 
   /**
+   * Fork restoration: upstream removed every call site of this dispatch in
+   * 0.15+, leaving {@link onConnectionChange} declared but never fired.
+   * Consumers (m00d-tool's execution engine) rely on it to re-run affected
+   * nodes when links are created or removed.
+   */
+  connectionChange(node: LGraphNode): void {
+    this.updateExecutionOrder()
+    this.onConnectionChange?.(node)
+    this._version++
+  }
+
+  /**
    * clears the triggered slot animation in all links (stop visual animation)
    */
   clearTriggeredSlots(): void {
