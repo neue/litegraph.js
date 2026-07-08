@@ -22,6 +22,7 @@
   "private": false,
   "scripts": {
     "build": "tsc && vite build",
+    "prepare": "npm run build",
     "dev": "vite",
     "preview": "vite preview",
     "watch": "vite build --watch",
