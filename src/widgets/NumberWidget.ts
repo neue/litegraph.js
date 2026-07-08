@@ -1,4 +1,4 @@
-import type { WidgetEventOptions } from "./BaseWidget"
+import type { DrawWidgetOptions, WidgetEventOptions } from "./BaseWidget"
 import type { INumericWidget } from "@/types/widgets"
 
 import { getWidgetStep } from "@/utils/widget"
@@ -10,11 +10,31 @@ export class NumberWidget extends BaseSteppedWidget<INumericWidget> implements I
 
   override get _displayValue() {
     if (this.computedDisabled) return ""
-    return Number(this.value).toFixed(
-      this.options.precision !== undefined
-        ? this.options.precision
-        : 3,
-    )
+    // Fork addition: when options.round is set, display exactly the decimal
+    // places the rounding step implies (e.g. round 0.05 -> 2 dp, round 1 -> 0 dp)
+    const { round, precision } = this.options
+    let decimals = precision !== undefined ? precision : 3
+    if (round) {
+      const fraction = String(round).split(".")[1]
+      decimals = fraction ? fraction.length : 0
+    }
+    return Number(this.value).toFixed(decimals)
+  }
+
+  // Fork styling: no background capsule behind number widgets — arrows and
+  // text drawn directly on the node
+  override drawWidget(ctx: CanvasRenderingContext2D, options: DrawWidgetOptions) {
+    // Store original context attributes
+    const { fillStyle, strokeStyle, textAlign } = ctx
+
+    if (options.showText) {
+      if (!this.computedDisabled) this.drawArrowButtons(ctx, options.width)
+
+      this.drawTruncatingText({ ctx, width: options.width })
+    }
+
+    // Restore original context attributes
+    Object.assign(ctx, { textAlign, strokeStyle, fillStyle })
   }
 
   override canIncrement(): boolean {
@@ -37,6 +57,10 @@ export class NumberWidget extends BaseSteppedWidget<INumericWidget> implements I
 
   override setValue(value: number, options: WidgetEventOptions) {
     let newValue = value
+    // Fork addition: snap to multiples of options.round before clamping
+    if (this.options.round) {
+      newValue = Math.round(newValue / this.options.round) * this.options.round
+    }
     if (this.options.min != null && newValue < this.options.min) {
       newValue = this.options.min
     }

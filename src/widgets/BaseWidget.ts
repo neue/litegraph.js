@@ -34,8 +34,8 @@ export abstract class BaseWidget<TWidget extends IBaseWidget = IBaseWidget> impl
   static margin = 15
   /** From widget edge to tip of arrow button */
   static arrowMargin = 6
-  /** Arrow button width */
-  static arrowWidth = 10
+  /** Arrow button width (fork styling: slimmer arrows, was 10) */
+  static arrowWidth = 4
   /** Absolute minimum display width of widget values */
   static minValueWidth = 42
   /** Minimum gap between label and value */

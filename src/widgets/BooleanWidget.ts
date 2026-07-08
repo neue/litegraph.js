@@ -5,6 +5,11 @@ import { BaseWidget, type DrawWidgetOptions, type WidgetEventOptions } from "./B
 export class BooleanWidget extends BaseWidget<IBooleanWidget> implements IBooleanWidget {
   override type = "toggle" as const
 
+  // Fork styling: no visible outline on the toggle capsule
+  override get outline_color() {
+    return this.background_color
+  }
+
   override drawWidget(ctx: CanvasRenderingContext2D, {
     width,
     showText = true,
@@ -14,7 +19,7 @@ export class BooleanWidget extends BaseWidget<IBooleanWidget> implements IBoolea
 
     this.drawWidgetShape(ctx, { width, showText })
 
-    ctx.fillStyle = this.value ? "#89A" : "#333"
+    ctx.fillStyle = this.value ? "#636994" : "#333"
     ctx.beginPath()
     ctx.arc(
       width - margin * 2,
