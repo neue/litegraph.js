@@ -25,6 +25,8 @@ export interface IWidgetOptions<TValues = unknown[]> {
   property?: string
   /** If `true`, an input socket will not be created for this widget. */
   socketless?: boolean
+  /** Fork addition: snap numeric widget values to multiples of this (also drives displayed decimal precision). */
+  round?: number
 
   values?: TValues
   callback?: IWidget["callback"]
@@ -65,6 +67,44 @@ export type IWidget =
   | ISliderWidget
   | IButtonWidget
   | IKnobWidget
+  | IHeaderWidget
+  | IColorWidget
+  | IGradientWidget
+
+/** Fork addition: static label/header row. */
+export interface IHeaderWidget extends IBaseWidget<string, "header", IWidgetOptions<string>> {
+  type: "header"
+  value: string
+}
+
+/** Fork addition: colour swatch that opens the native colour picker. */
+export interface IColorWidget extends IBaseWidget<string, "color", IWidgetOptions<string>> {
+  type: "color"
+  value: string
+}
+
+/** Fork addition: a single stop in a gradient widget. */
+export interface IWidgetGradientStop {
+  position: number
+  color: string
+}
+
+/** Fork addition: colour-mixing algorithms supported by the gradient widget. */
+export type MixingAlgorithm = "RGB" | "Oklab" | "CIELAB"
+
+/** Fork addition: options for the gradient widget. */
+export interface IWidgetGradientOptions extends IWidgetOptions<IWidgetGradientStop[]> {
+  /** Minimum number of stops (default 2). */
+  min_stops?: number
+  /** Default mixing algorithm. */
+  default_algorithm?: MixingAlgorithm
+}
+
+/** Fork addition: draggable multi-stop gradient editor. */
+export interface IGradientWidget extends IBaseWidget<IWidgetGradientStop[], "gradient", IWidgetGradientOptions> {
+  type: "gradient"
+  value: IWidgetGradientStop[]
+}
 
 export interface IBooleanWidget extends IBaseWidget<boolean, "toggle"> {
   type: "toggle"

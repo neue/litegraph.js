@@ -3,8 +3,11 @@ import type {
   IBaseWidget,
   IBooleanWidget,
   IButtonWidget,
+  IColorWidget,
   IComboWidget,
   ICustomWidget,
+  IGradientWidget,
+  IHeaderWidget,
   IKnobWidget,
   INumericWidget,
   ISliderWidget,
@@ -18,7 +21,10 @@ import { toClass } from "@/utils/type"
 import { BaseWidget } from "./BaseWidget"
 import { BooleanWidget } from "./BooleanWidget"
 import { ButtonWidget } from "./ButtonWidget"
+import { ColorWidget } from "./ColorWidget"
 import { ComboWidget } from "./ComboWidget"
+import { GradientWidget } from "./GradientWidget"
+import { HeaderWidget } from "./HeaderWidget"
 import { KnobWidget } from "./KnobWidget"
 import { LegacyWidget } from "./LegacyWidget"
 import { NumberWidget } from "./NumberWidget"
@@ -35,6 +41,9 @@ export type WidgetTypeMap = {
   string: TextWidget
   text: TextWidget
   custom: LegacyWidget
+  header: HeaderWidget
+  color: ColorWidget
+  gradient: GradientWidget
   [key: string]: BaseWidget
 }
 
@@ -74,6 +83,9 @@ export function toConcreteWidget<TWidget extends IWidget | IBaseWidget>(
   case "number": return toClass(NumberWidget, narrowedWidget, node)
   case "string": return toClass(TextWidget, narrowedWidget, node)
   case "text": return toClass(TextWidget, narrowedWidget, node)
+  case "header": return toClass(HeaderWidget, narrowedWidget, node)
+  case "color": return toClass(ColorWidget, narrowedWidget, node)
+  case "gradient": return toClass(GradientWidget, narrowedWidget, node)
   default: {
     if (wrapLegacyWidgets) return toClass(LegacyWidget, widget, node)
   }
