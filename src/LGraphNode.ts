@@ -708,6 +708,15 @@ export class LGraphNode implements NodeLike, Positionable, IPinnable, IColorable
         }
       }
 
+      // Fork fix: this instance property shadows onMouseDown defined on
+      // subclass prototypes (interactive nodes implement it as a class
+      // method). Chain through to the prototype implementation instead of
+      // silently swallowing the event.
+      const prototypeHandler = (Object.getPrototypeOf(this) as LGraphNode)?.onMouseDown
+      if (typeof prototypeHandler === "function") {
+        return prototypeHandler.call(this, e, pos, canvas)
+      }
+
       return false // Allow default behavior
     }
   }
